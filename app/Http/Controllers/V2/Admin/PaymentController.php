@@ -40,7 +40,12 @@ class PaymentController extends Controller
     public function getPaymentForm(Request $request)
     {
         try {
-            $paymentService = new PaymentService($request->input('payment'), $request->input('id'));
+            // 仅管理端编辑既有实例时允许读取已安装但停用的插件表单；用户支付仍要求插件启用。
+            $paymentService = new PaymentService(
+                $request->input('payment'),
+                $request->input('id'),
+                allowDisabledPlugin: true
+            );
             return $this->success(collect($paymentService->form()));
         } catch (\Exception $e) {
             return $this->fail([400, '支付方式不存在或未启用']);

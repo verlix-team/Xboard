@@ -84,8 +84,11 @@ class NodeRegistry
             'timestamp' => time(),
         ]);
 
-        $conn->send($payload);
-        return true;
+        // Workerman returns false only when the connection/send buffer rejects
+        // the write. true or null means the frame was written immediately or
+        // accepted into its connection buffer; this is a transport-level
+        // acknowledgement, not an application acknowledgement from the node.
+        return $conn->send($payload) !== false;
     }
 
     /**
@@ -167,4 +170,3 @@ class NodeRegistry
         return count(self::$machineConnections);
     }
 }
-

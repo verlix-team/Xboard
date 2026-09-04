@@ -373,6 +373,7 @@ class NodeWorker
 
             $event = $payload['event'] ?? '';
             $data = $payload['data'] ?? [];
+            $delivery = $payload['delivery'] ?? null;
 
             // Machine-level events (e.g., sync.nodes)
             $machineId = $payload['machine_id'] ?? null;
@@ -397,6 +398,31 @@ class NodeWorker
             }
 
             $sent = NodeRegistry::send((int) $nodeId, $event, $data);
+            if (is_array($delivery)
+                && isset($delivery['id'], $delivery['claim_token'])) {
+                try {
+                    $service = app(\App\Services\JavaTrafficOutboxService::class);
+                    if ($sent) {
+                        $service->acknowledgeDelivery(
+                            (int) $delivery['id'],
+                            (string) $delivery['claim_token']
+                        );
+                    } else {
+                        $service->retryDelivery(
+                            (int) $delivery['id'],
+                            (string) $delivery['claim_token'],
+                            'NODE_CONNECTION_MISSING'
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    // The lease remains durable and will be recovered by the scheduler.
+                    Log::warning('[WS] Traffic delivery acknowledgement failed', [
+                        'delivery_id' => (int) $delivery['id'],
+                        'node_id' => (int) $nodeId,
+                        'error_type' => get_class($e),
+                    ]);
+                }
+            }
             if ($sent) {
                 Log::debug("[WS] Pushed {$event} to node#{$nodeId}");
             }

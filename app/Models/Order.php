@@ -35,6 +35,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $discount_amount
  * @property int|null $paid_at
  * @property string|null $callback_no
+ * @property string $processor
+ * @property int|null $active_user_id
  *
  * @property-read Plan $plan
  * @property-read Payment|null $payment

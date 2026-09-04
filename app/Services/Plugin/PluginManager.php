@@ -2,6 +2,7 @@
 
 namespace App\Services\Plugin;
 
+use App\Contracts\PaymentInterface;
 use App\Models\Plugin;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
@@ -703,6 +704,50 @@ class PluginManager
     public function getEnabledPaymentPlugins(): array
     {
         return $this->getEnabledPluginsByType('payment');
+    }
+
+    /**
+     * 获取与历史支付方式名称匹配的已安装支付插件，包括当前停用的插件。
+     *
+     * 该入口只加载插件类和保存的配置，不执行 boot、路由或计划任务，供管理端编辑既有实例使用。
+     */
+    public function getInstalledPaymentPluginForMethod(string $method): (AbstractPlugin&PaymentInterface)|null
+    {
+        $installedPlugins = Plugin::query()->byType('payment')->get();
+
+        foreach ($installedPlugins as $dbPlugin) {
+            $configFile = $this->getPluginPath($dbPlugin->code) . '/config.json';
+            if (!File::exists($configFile)) {
+                continue;
+            }
+
+            $metadata = json_decode(File::get($configFile), true) ?: [];
+            $methodNames = array_filter([
+                $metadata['name'] ?? null,
+                Str::studly($dbPlugin->code),
+            ]);
+            $matches = false;
+            foreach ($methodNames as $name) {
+                if (strcasecmp($name, $method) === 0) {
+                    $matches = true;
+                    break;
+                }
+            }
+            if (!$matches) {
+                continue;
+            }
+
+            $plugin = $this->loadPlugin($dbPlugin->code);
+            if (!$plugin instanceof PaymentInterface) {
+                continue;
+            }
+
+            $values = json_decode($dbPlugin->config ?? '', true) ?: [];
+            $plugin->setConfig($this->castConfigValuesByType($dbPlugin->code, $values));
+            return $plugin;
+        }
+
+        return null;
     }
 
     /**

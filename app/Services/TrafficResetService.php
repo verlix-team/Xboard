@@ -12,29 +12,47 @@ use Illuminate\Support\Facades\Cache;
 use App\Services\Plugin\HookManager;
 
 /**
- * Service for handling traffic reset.
+ * 用户流量重置服务。
  */
 class TrafficResetService
 {
   /**
-   * Check if a user's traffic should be reset and perform the reset.
+   * 检查用户当前是否满足自动重置条件，满足时执行重置。
    */
   public function checkAndReset(User $user, string $triggerSource = TrafficResetLog::SOURCE_AUTO): bool
   {
-    if (!$user->shouldResetTraffic()) {
-      return false;
-    }
-
-    return $this->performReset($user, $triggerSource);
+    return $this->resetWithLock($user, $triggerSource, true);
   }
 
   /**
-   * Perform the traffic reset for a user.
+   * 强制执行用户流量重置，不要求当前已经到达自动重置时间。
    */
   public function performReset(User $user, string $triggerSource = TrafficResetLog::SOURCE_MANUAL): bool
   {
+    return $this->resetWithLock($user, $triggerSource, false);
+  }
+
+  /**
+   * 修改共享流量状态前，重新读取并锁定数据库中的最新用户行。
+   *
+   * 自动重置调用方必须在取得行锁后重新检查到期条件。Xboard 扫描出候选用户后，
+   * Java 订单事务可能已经先完成重置并推进 next_reset_at；如果继续使用扫描阶段的
+   * 旧模型，就可能清除重置后新产生的流量，或者重复写入重置日志。
+   */
+  private function resetWithLock(User $candidate, string $triggerSource, bool $requireDue): bool
+  {
     try {
-      return DB::transaction(function () use ($user, $triggerSource) {
+      return DB::transaction(function () use ($candidate, $triggerSource, $requireDue) {
+        $user = User::query()
+          ->with('plan')
+          ->whereKey($candidate->getKey())
+          ->lockForUpdate()
+          ->first();
+
+        if (!$user || ($requireDue && !$user->shouldResetTraffic())) {
+          return false;
+        }
+
         $oldUpload = $user->u ?? 0;
         $oldDownload = $user->d ?? 0;
         $oldTotal = $oldUpload + $oldDownload;
@@ -66,8 +84,8 @@ class TrafficResetService
       });
     } catch (\Exception $e) {
       Log::error(__('traffic_reset.reset_failed'), [
-        'user_id' => $user->id,
-        'email' => $user->email,
+        'user_id' => $candidate->id,
+        'email' => $candidate->email,
         'error' => $e->getMessage(),
         'trigger_source' => $triggerSource,
       ]);
@@ -77,7 +95,7 @@ class TrafficResetService
   }
 
   /**
-   * Calculate the next traffic reset time for a user.
+   * 根据用户套餐和到期时间计算下一次流量重置时间。
    */
   public function calculateNextResetTime(User $user): ?Carbon
   {
@@ -109,7 +127,7 @@ class TrafficResetService
   }
 
   /**
-   * Get the first day of the next month.
+   * 取得下个月第一天。
    */
   private function getNextMonthFirstDay(Carbon $from): Carbon
   {
@@ -117,13 +135,13 @@ class TrafficResetService
   }
 
   /**
-   * Get the next monthly reset time based on the user's expiration date.
+   * 根据用户到期日计算下一次按月重置时间。
    *
-   * Logic:
-   * 1. If the user has no expiration date, reset on the 1st of each month.
-   * 2. If the user has an expiration date, use the day of that date as the monthly reset day.
-   * 3. Prioritize the reset day in the current month if it has not passed yet.
-   * 4. Handle cases where the day does not exist in a month (e.g., 31st in February).
+   * 规则：
+   * 1. 用户没有到期时间时，每月 1 日重置。
+   * 2. 用户存在到期时间时，以到期日中的“日”作为每月重置日。
+   * 3. 本月重置时刻尚未经过时，优先使用本月日期。
+   * 4. 目标月份不存在该日期时（例如 2 月 31 日），使用当月最后一天。
    */
   private function getNextMonthlyReset(User $user, Carbon $from): Carbon
   {
@@ -150,7 +168,7 @@ class TrafficResetService
   }
 
   /**
-   * Get the first day of the next year.
+   * 取得下一年的第一天。
    */
   private function getNextYearFirstDay(Carbon $from): Carbon
   {
@@ -158,13 +176,13 @@ class TrafficResetService
   }
 
   /**
-   * Get the next yearly reset time based on the user's expiration date.
+   * 根据用户到期日计算下一次按年重置时间。
    *
-   * Logic:
-   * 1. If the user has no expiration date, reset on January 1st of each year.
-   * 2. If the user has an expiration date, use the month and day of that date as the yearly reset date.
-   * 3. Prioritize the reset date in the current year if it has not passed yet.
-   * 4. Handle the case of February 29th in a leap year.
+   * 规则：
+   * 1. 用户没有到期时间时，每年 1 月 1 日重置。
+   * 2. 用户存在到期时间时，以到期日中的月和日作为每年重置日期。
+   * 3. 本年重置时刻尚未经过时，优先使用本年日期。
+   * 4. 处理闰年 2 月 29 日在非闰年中不存在的情况。
    */
   private function getNextYearlyReset(User $user, Carbon $from): Carbon
   {
@@ -192,7 +210,7 @@ class TrafficResetService
 
 
   /**
-   * Record the traffic reset log.
+   * 记录流量重置审计日志。
    */
   private function recordResetLog(User $user, array $data): void
   {
@@ -212,7 +230,7 @@ class TrafficResetService
   }
 
   /**
-   * Get the reset type from the user's plan.
+   * 根据用户套餐取得重置类型。
    */
   private function getResetTypeFromPlan(?Plan $plan): string
   {
@@ -237,7 +255,7 @@ class TrafficResetService
   }
 
   /**
-   * Clear user-related cache.
+   * 清除与用户流量、重置状态和订阅信息有关的缓存。
    */
   private function clearUserCache(User $user): void
   {
@@ -253,7 +271,7 @@ class TrafficResetService
   }
 
   /**
-   * Batch check and reset users. Processes all eligible users in batches.
+   * 分批检查并重置全部满足条件的用户。
    */
   public function batchCheckReset(int $batchSize = 100, ?callable $progressCallback = null): array
   {
@@ -367,7 +385,7 @@ class TrafficResetService
   }
 
   /**
-   * Set the initial reset time for a new user.
+   * 为尚未设置重置时间的新用户计算初始重置时间。
    */
   public function setInitialResetTime(User $user): void
   {
@@ -383,7 +401,7 @@ class TrafficResetService
   }
 
   /**
-   * Get the user's traffic reset history.
+   * 查询用户最近的流量重置历史。
    */
   public function getUserResetHistory(User $user, int $limit = 10): \Illuminate\Database\Eloquent\Collection
   {
@@ -394,7 +412,7 @@ class TrafficResetService
   }
 
   /**
-   * Check if the user is eligible for traffic reset.
+   * 检查用户是否具备流量重置资格。
    */
   public function canReset(User $user): bool
   {
@@ -402,7 +420,7 @@ class TrafficResetService
   }
 
   /**
-   * Manually reset a user's traffic (Admin function).
+   * 由管理端手工重置用户流量。
    */
   public function manualReset(User $user, array $metadata = []): bool
   {

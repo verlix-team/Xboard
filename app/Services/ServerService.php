@@ -84,7 +84,7 @@ class ServerService
 
     /**
      * 根据权限组获取可用的用户列表
-     * @param array $groupIds
+     * @param Server $node
      * @return Collection
      */
     public static function getAvailableUsers(Server $node)
@@ -109,6 +109,36 @@ class ServerService
             ])
             ->get();
         return HookManager::filter('server.users.get', $users, $node);
+    }
+
+    /**
+     * Resolve one user's current authoritative membership for a node.
+     *
+     * This deliberately mirrors getAvailableUsers() and applies the same
+     * plugin filter so delayed Outbox retries cannot re-add a user that the
+     * current database state or a server.users.get filter excludes.
+     */
+    public static function findAvailableUser(Server $node, int $userId): ?object
+    {
+        $groupIds = $node->group_ids ?? [];
+        if (empty($groupIds)) {
+            return null;
+        }
+
+        $users = User::toBase()
+            ->where('id', $userId)
+            ->whereIn('group_id', $groupIds)
+            ->whereRaw('u + d < transfer_enable')
+            ->where(function ($query) {
+                $query->where('expired_at', '>=', time())
+                    ->orWhereNull('expired_at');
+            })
+            ->where('banned', 0)
+            ->select(['id', 'uuid', 'speed_limit', 'device_limit'])
+            ->get();
+
+        $filtered = HookManager::filter('server.users.get', $users, $node);
+        return collect($filtered)->firstWhere('id', $userId);
     }
 
     // 获取路由规则

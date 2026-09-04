@@ -9,7 +9,7 @@ use App\Http\Requests\Admin\UserUpdate;
 use App\Jobs\SendEmailJob;
 use App\Models\Plan;
 use App\Models\User;
-use App\Services\AuthService;
+use App\Services\JavaIdentityRevocationService;
 use App\Services\NodeSyncService;
 use App\Services\Plugin\HookManager;
 use App\Services\UserService;
@@ -225,7 +225,7 @@ class UserController extends Controller
         return $this->success($user);
     }
 
-    public function update(UserUpdate $request)
+    public function update(UserUpdate $request, JavaIdentityRevocationService $revocations)
     {
         $params = $request->validated();
 
@@ -260,10 +260,7 @@ class UserController extends Controller
             $params['invite_user_id'] = null;
         }
 
-        if (isset($params['banned']) && (int) $params['banned'] === 1) {
-            $authService = new AuthService($user);
-            $authService->removeAllSessions();
-        }
+        $requestsPhysicalRevocation = isset($params['banned']) && (int) $params['banned'] === 1;
         if (isset($params['balance'])) {
             $params['balance'] = $params['balance'] * 100;
         }
@@ -280,9 +277,19 @@ class UserController extends Controller
         ]);
 
         try {
-            $user->update($params);
+            if ($requestsPhysicalRevocation) {
+                DB::transaction(function () use ($user, $params, $revocations): void {
+                    $user->update($params);
+                    $revocations->requestForUsers(
+                        [$user->id],
+                        JavaIdentityRevocationService::SOURCE_ADMIN_SINGLE
+                    );
+                });
+            } else {
+                $user->update($params);
+            }
         } catch (\Exception $e) {
-            Log::error($e);
+            Log::error('Admin user update failed', ['exception_type' => $e::class]);
             return $this->fail([500, '保存失败']);
         }
 
@@ -646,7 +653,7 @@ class UserController extends Controller
         return $this->success(true);
     }
 
-    public function ban(Request $request)
+    public function ban(Request $request, JavaIdentityRevocationService $revocations)
     {
         $scopeInfo = $this->resolveScope($request);
         $scope = $scopeInfo['scope'];
@@ -672,14 +679,29 @@ class UserController extends Controller
         } // all: ignore filter/sort
 
         try {
-            $builder->update([
-                'banned' => 1
-            ]);
+            DB::transaction(function () use ($builder, $revocations): void {
+                // Cursor by primary key so filtered/all scopes remain bounded while one DB transaction
+                // atomically persists both banned=1 and one durable Java request per affected user.
+                (clone $builder)
+                    ->reorder()
+                    ->select('id')
+                    ->orderBy('id')
+                    ->chunkById(500, function ($users) use ($revocations): void {
+                        $ids = $users->pluck('id')->map(static fn ($id) => (int) $id)->all();
+                        if ($ids === []) {
+                            return;
+                        }
+                        User::query()->whereIn('id', $ids)->update(['banned' => 1]);
+                        $revocations->requestForUsers(
+                            $ids,
+                            JavaIdentityRevocationService::SOURCE_ADMIN_BULK
+                        );
+                    });
+            });
         } catch (\Exception $e) {
-            Log::error($e);
+            Log::error('Admin bulk user ban failed', ['exception_type' => $e::class]);
             return $this->fail([500, '处理失败']);
         }
-        // Full refresh not implemented.
         return $this->success(true);
     }
 

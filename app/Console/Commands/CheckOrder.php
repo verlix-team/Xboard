@@ -44,6 +44,8 @@ class CheckOrder extends Command
     public function handle()
     {
         Order::whereIn('status', [Order::STATUS_PENDING, Order::STATUS_PROCESSING])
+            // Java 用户订单由 Java 支付/订阅链路处理，避免两套扫描器重复履约。
+            ->where('processor', '!=', 'JAVA_USER')
             ->orderBy('created_at', 'ASC')
             ->lazyById(200)
             ->each(function ($order) {

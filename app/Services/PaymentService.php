@@ -15,7 +15,15 @@ class PaymentService
     protected $pluginManager;
     protected $class;
 
-    public function __construct($method, $id = NULL, $uuid = NULL)
+    /**
+     * 创建支付服务。
+     *
+     * @param mixed $method 支付方式名称
+     * @param mixed $id 支付实例主键
+     * @param mixed $uuid 支付实例 UUID
+     * @param bool $allowDisabledPlugin 是否仅为管理编辑加载已安装但停用的插件
+     */
+    public function __construct($method, $id = NULL, $uuid = NULL, bool $allowDisabledPlugin = false)
     {
         $this->method = $method;
         $this->pluginManager = app(PluginManager::class);
@@ -41,6 +49,8 @@ class PaymentService
 
         $this->config = [];
         if (isset($payment)) {
+            // 编辑既有实例时以数据库记录为准，避免停用插件后前端无法回填 payment 字段。
+            $this->method = $payment['payment'];
             $this->config = is_string($payment['config']) ? json_decode($payment['config'], true) : $payment['config'];
             $this->config['enable'] = $payment['enable'];
             $this->config['id'] = $payment['id'];
@@ -61,7 +71,17 @@ class PaymentService
             }
         }
 
-        $this->payment = new $this->class($this->config);
+        if ($allowDisabledPlugin && isset($payment)) {
+            // 该分支只恢复管理表单，不放宽 pay/notify 使用停用插件的限制。
+            $plugin = $this->pluginManager->getInstalledPaymentPluginForMethod($this->method);
+            if ($plugin) {
+                $plugin->setConfig($this->config);
+                $this->payment = $plugin;
+                return;
+            }
+        }
+
+        throw new ApiException('payment method not found or disabled');
     }
 
     public function notify($params)

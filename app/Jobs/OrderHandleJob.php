@@ -38,6 +38,8 @@ class OrderHandleJob implements ShouldQueue
     {
         $order = Order::where('trade_no', $this->tradeNo)->first();
         if (!$order) return;
+        // 即使旧队列中残留任务，也不得处理 Java 用户订单。
+        if ($order->processor === 'JAVA_USER') return;
         $orderService = new OrderService($order);
         switch ($order->status) {
             // cancel

@@ -33,7 +33,7 @@ class Setting
      */
     public function set(string $key, mixed $value = null): bool
     {
-        SettingModel::createOrUpdate(strtolower($key), $value);
+        $this->persist(strtolower($key), $value);
         $this->flush();
         return true;
     }
@@ -44,7 +44,7 @@ class Setting
     public function save(array $settings): bool
     {
         foreach ($settings as $key => $value) {
-            SettingModel::createOrUpdate(strtolower($key), $value);
+            $this->persist(strtolower($key), $value);
         }
         $this->flush();
         return true;
@@ -136,5 +136,18 @@ class Setting
     {
         $this->cache->forget(self::CACHE_KEY);
         $this->loadedSettings = null;
+    }
+
+    /**
+     * 持久化单项设置；NULL 与读取侧的“未配置”语义一致，因此删除该项而不是保存数据库 NULL。
+     */
+    private function persist(string $key, mixed $value): void
+    {
+        if ($value === null) {
+            SettingModel::where('name', $key)->delete();
+            return;
+        }
+
+        SettingModel::createOrUpdate($key, $value);
     }
 }

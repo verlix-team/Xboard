@@ -145,21 +145,33 @@ class NodeSyncService
     }
 
     /**
-     * Publish a push command to Redis — picked up by the Workerman WS server
+     * Publish a push command to Redis for the Workerman WebSocket server.
+     *
+     * @param int $nodeId Target Xboard node identifier.
+     * @param string $event Node protocol event name.
+     * @param array $data Event payload delivered to the node.
+     * @param array|null $delivery Optional durable delivery identity used by the
+     *                            Java traffic Outbox acknowledgement path.
+     * @return bool Whether at least one Redis subscriber accepted the message.
      */
-    public static function push(int $nodeId, string $event, array $data): void
+    public static function push(int $nodeId, string $event, array $data, ?array $delivery = null): bool
     {
         try {
-            Redis::publish('node:push', json_encode([
+            $payload = [
                 'node_id' => $nodeId,
                 'event' => $event,
                 'data' => $data,
-            ]));
+            ];
+            if ($delivery !== null) {
+                $payload['delivery'] = $delivery;
+            }
+            return (int) Redis::publish('node:push', json_encode($payload)) > 0;
         } catch (\Throwable $e) {
             Log::warning("[NodePush] Redis publish failed: {$e->getMessage()}", [
                 'node_id' => $nodeId,
                 'event' => $event,
             ]);
+            return false;
         }
     }
 
