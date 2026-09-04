@@ -2,7 +2,7 @@ name: Docker Build and Publish
 
 on:
   push:
-    branches: ["master", "new-dev"]
+    branches: ["master", "new-dev", "test"]
   workflow_dispatch:
 
 env:
@@ -97,4 +97,3 @@ jobs:
           outputs: type=registry,push=true
           allow: |
             network.host
-
