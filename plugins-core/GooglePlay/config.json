@@ -1,0 +1,8 @@
+{
+    "name": "Google Play Billing",
+    "code": "google_play",
+    "type": "payment",
+    "version": "1.0.0",
+    "description": "Java-owned Google Play Billing configuration",
+    "author": "Hop"
+}

@@ -1,0 +1,8 @@
+{
+    "name": "Stripe Google Pay",
+    "code": "stripe_gpay",
+    "type": "payment",
+    "version": "1.0.0",
+    "description": "Java-owned Stripe Checkout and Google Pay configuration",
+    "author": "Hop"
+}

@@ -17,6 +17,8 @@ use App\Http\Controllers\V2\Admin\CouponController;
 use App\Http\Controllers\V2\Admin\GiftCardController;
 use App\Http\Controllers\V2\Admin\KnowledgeController;
 use App\Http\Controllers\V2\Admin\PaymentController;
+use App\Http\Controllers\V2\Admin\BillingProductController;
+use App\Http\Controllers\V2\Admin\BillingLedgerController;
 use App\Http\Controllers\V2\Admin\SystemController;
 use App\Http\Controllers\V2\Admin\ThemeController;
 use App\Http\Controllers\V2\Admin\TrafficResetController;
@@ -223,7 +225,7 @@ class AdminRoute
                 $router->post('/sort', [KnowledgeController::class, 'sort']);
             });
 
-            // Payment  
+            // Payment
             $router->group([
                 'prefix' => 'payment'
             ], function ($router) {
@@ -234,6 +236,25 @@ class AdminRoute
                 $router->post('/drop', [PaymentController::class, 'drop']);
                 $router->post('/show', [PaymentController::class, 'show']);
                 $router->post('/sort', [PaymentController::class, 'sort']);
+            });
+
+            // Billing 产品映射：PHP 负责配置，Java 负责执行。
+            $router->group([
+                'prefix' => 'billing/product'
+            ], function ($router) {
+                $router->get('/fetch', [BillingProductController::class, 'fetch']);
+                $router->post('/save', [BillingProductController::class, 'save']);
+                $router->post('/show', [BillingProductController::class, 'show']);
+                $router->post('/drop', [BillingProductController::class, 'drop']);
+            });
+
+            // Java 管理的 Billing 账本在 Xboard 中只读，操作仍由 Java 或渠道控制台执行。
+            $router->group([
+                'prefix' => 'billing/ledger'
+            ], function ($router) {
+                $router->get('/agreements', [BillingLedgerController::class, 'agreements']);
+                $router->get('/cycles', [BillingLedgerController::class, 'cycles']);
+                $router->get('/events', [BillingLedgerController::class, 'events']);
             });
 
             // System
