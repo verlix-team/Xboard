@@ -11,6 +11,9 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('v2_billing_product_mapping', function (Blueprint $table) {
+            // 渠道标识仅允许 ASCII；二进制排序同时保证大小写敏感并避免联合索引超长。
+            $table->charset = 'ascii';
+            $table->collation = 'ascii_bin';
             $table->id();
             $table->string('provider', 24)->comment('支付渠道：STRIPE 或 GOOGLE_PLAY');
             $table->string('environment', 16)->comment('运行环境：TEST 或 PRODUCTION');

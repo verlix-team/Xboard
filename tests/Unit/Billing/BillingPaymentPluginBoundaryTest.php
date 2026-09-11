@@ -40,6 +40,8 @@ class BillingPaymentPluginBoundaryTest extends TestCase
             . '/database/migrations/2026_09_07_000001_create_v2_billing_product_mapping.php');
 
         $this->assertStringContainsString("Schema::create('v2_billing_product_mapping'", $migration);
+        $this->assertStringContainsString("\$table->charset = 'ascii'", $migration);
+        $this->assertStringContainsString("\$table->collation = 'ascii_bin'", $migration);
         $this->assertStringContainsString('uk_v2_billing_mapping_external', $migration);
         $this->assertStringContainsString('uk_v2_billing_mapping_plan', $migration);
         $this->assertStringContainsString("->default(false)", $migration);
