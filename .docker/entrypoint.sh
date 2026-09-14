@@ -147,6 +147,20 @@ echo "[entrypoint] Starting services (caddy=${ENABLE_CADDY} web=${ENABLE_WEB} ho
 # Drop stale Octane/WorkerMan state files so the new master does not signal
 # PIDs left over from a previous container run (causes Swoole kill EPERM).
 rm -f /www/storage/logs/octane-server-state.json /www/storage/logs/xboard-ws-server.pid 2>/dev/null || true
-chown -R www:www /www 2>/dev/null || true
-chown redis:redis /data 2>/dev/null || true
+
+# 镜像构建阶段已设置整个 /www 的所有权。容器启动时只修复可持久挂载和
+# Laravel 运行时会写入的目录，避免每次遍历 vendor 与全部源码。
+for path in \
+    /www/storage \
+    /www/bootstrap/cache \
+    /www/plugins \
+    /www/public/theme \
+    /www/public/plugins \
+    /www/.docker/.data
+do
+    [ -e "$path" ] || continue
+    chown -R www:www "$path"
+done
+
+[ ! -d /data ] || chown redis:redis /data
 exec "$@"
