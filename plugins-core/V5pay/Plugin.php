@@ -1,14 +1,12 @@
 <?php
 
-namespace Plugin\V5Pay;
+namespace Plugin\V5pay;
 
 use App\Contracts\PaymentInterface;
 use App\Exceptions\ApiException;
 use App\Services\Plugin\AbstractPlugin;
 
-/**
- * Xboard 只维护 V5Pay 支付实例配置，Java 是发起、回调和查询的唯一执行方。
- */
+/** Xboard 只维护 V5Pay 配置，Java 是发起、回调和查询的唯一执行方。 */
 class Plugin extends AbstractPlugin implements PaymentInterface
 {
     public function boot(): void
@@ -27,16 +25,8 @@ class Plugin extends AbstractPlugin implements PaymentInterface
     public function form(): array
     {
         return [
-            'merchant_no' => [
-                'label' => 'V5Pay Merchant No',
-                'type' => 'string',
-                'required' => true,
-            ],
-            'app_key' => [
-                'label' => 'V5Pay App Key',
-                'type' => 'string',
-                'required' => true,
-            ],
+            'merchant_no' => ['label' => 'V5Pay Merchant No', 'type' => 'string', 'required' => true],
+            'app_key' => ['label' => 'V5Pay App Key', 'type' => 'string', 'required' => true],
             'secret_key_env' => [
                 'label' => 'Secret Key 环境变量名',
                 'type' => 'string',
