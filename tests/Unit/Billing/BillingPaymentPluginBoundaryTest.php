@@ -34,6 +34,23 @@ class BillingPaymentPluginBoundaryTest extends TestCase
         $plugin->pay([]);
     }
 
+    public function test_java_owned_payment_plugins_are_installed_disabled(): void
+    {
+        foreach (['GooglePlay', 'StripeGpay'] as $directory) {
+            $config = json_decode(file_get_contents(
+                dirname(__DIR__, 3) . "/plugins-core/{$directory}/config.json"
+            ), true, flags: JSON_THROW_ON_ERROR);
+
+            $this->assertArrayHasKey('auto_enable', $config);
+            $this->assertFalse($config['auto_enable']);
+        }
+
+        $pluginManager = file_get_contents(
+            dirname(__DIR__, 3) . '/app/Services/Plugin/PluginManager.php'
+        );
+        $this->assertStringContainsString("\$config['auto_enable'] ?? true", $pluginManager);
+    }
+
     public function test_product_mapping_migration_uses_versioned_unique_keys(): void
     {
         $migration = file_get_contents(dirname(__DIR__, 3)

@@ -774,8 +774,12 @@ class PluginManager
             }
             if (!Plugin::where('code', $code)->exists()) {
                 $pluginManager->install($code);
-                $pluginManager->enable($code);
-                Log::info("Installed and enabled core plugin: {$code}");
+                if ($config['auto_enable'] ?? true) {
+                    $pluginManager->enable($code);
+                    Log::info("Installed and enabled core plugin: {$code}");
+                } else {
+                    Log::info("Installed disabled core plugin: {$code}");
+                }
             }
         }
     }
