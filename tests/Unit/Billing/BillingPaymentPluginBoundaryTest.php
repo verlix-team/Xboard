@@ -34,9 +34,26 @@ class BillingPaymentPluginBoundaryTest extends TestCase
         $plugin->pay([]);
     }
 
+    public function test_v5pay_plugin_keeps_secret_as_reference_and_php_fail_closed(): void
+    {
+        require_once dirname(__DIR__, 3) . '/plugins-core/V5Pay/Plugin.php';
+        $plugin = new \Plugin\V5Pay\Plugin('v5pay');
+        $form = $plugin->form();
+
+        $this->assertSame(
+            ['merchant_no', 'app_key', 'secret_key_env', 'environment',
+                'product_name', 'product_website'],
+            array_keys($form)
+        );
+        $this->assertSame('UAT', $form['environment']['default']);
+        $this->assertStringContainsString('环境变量名称', $form['secret_key_env']['description']);
+        $this->expectException(ApiException::class);
+        $plugin->notify([]);
+    }
+
     public function test_java_owned_payment_plugins_are_installed_disabled(): void
     {
-        foreach (['GooglePlay', 'StripeGpay'] as $directory) {
+        foreach (['GooglePlay', 'StripeGpay', 'V5Pay'] as $directory) {
             $config = json_decode(file_get_contents(
                 dirname(__DIR__, 3) . "/plugins-core/{$directory}/config.json"
             ), true, flags: JSON_THROW_ON_ERROR);
