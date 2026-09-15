@@ -407,13 +407,14 @@ class NodeWorker
                             (int) $delivery['id'],
                             (string) $delivery['claim_token']
                         );
-                    } else {
-                        $service->retryDelivery(
-                            (int) $delivery['id'],
-                            (string) $delivery['claim_token'],
-                            'NODE_CONNECTION_MISSING'
-                        );
                     }
+                    // Redis Pub/Sub broadcasts this message to every WS runtime.
+                    // Only the runtime that owns the node connection may settle
+                    // the shared delivery row. A non-owner must stay silent:
+                    // otherwise it can race the owner's successful acknowledgement
+                    // and put an already-written delivery back into retry. When no
+                    // runtime owns the connection, the durable claim lease expires
+                    // and the scheduler retries it safely.
                 } catch (\Throwable $e) {
                     // The lease remains durable and will be recovered by the scheduler.
                     Log::warning('[WS] Traffic delivery acknowledgement failed', [
