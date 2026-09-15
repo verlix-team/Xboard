@@ -85,7 +85,8 @@ class PluginManager
             $pluginFile = $this->getPluginPath($pluginCode) . '/Plugin.php';
             if (!File::exists($pluginFile)) {
                 Log::warning("Plugin class file not found: {$pluginFile}");
-                Plugin::query()->where('code', $pluginCode)->delete();
+                // 多运行时共享数据库时，单个旧容器缺少插件文件不能代表插件已被卸载。
+                // 安装记录只能由显式卸载流程删除，避免 WebSocket/Horizon 误删 Web 已安装插件。
                 return null;
             }
             require_once $pluginFile;
@@ -350,7 +351,7 @@ class PluginManager
         $plugin = $this->loadPlugin($pluginCode);
 
         if (!$plugin) {
-            Plugin::where('code', $pluginCode)->delete();
+            // 启用失败只报告错误，保留安装记录和配置，便于修复运行时文件后重试。
             throw new \Exception('Plugin not found: ' . $pluginCode);
         }
 

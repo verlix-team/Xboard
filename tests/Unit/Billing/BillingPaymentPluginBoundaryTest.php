@@ -69,6 +69,33 @@ class BillingPaymentPluginBoundaryTest extends TestCase
         $this->assertStringContainsString("Str::studly(\$pluginCode)", $pluginManager);
     }
 
+    public function test_missing_plugin_file_does_not_delete_shared_install_record(): void
+    {
+        $source = file_get_contents(
+            dirname(__DIR__, 3) . '/app/Services/Plugin/PluginManager.php'
+        );
+        $loadPlugin = substr(
+            $source,
+            strpos($source, 'protected function loadPlugin'),
+            strpos($source, 'protected function registerServiceProvider')
+                - strpos($source, 'protected function loadPlugin')
+        );
+        $enablePlugin = substr(
+            $source,
+            strpos($source, 'public function enable'),
+            strpos($source, 'public function disable') - strpos($source, 'public function enable')
+        );
+        $uninstallPlugin = substr(
+            $source,
+            strpos($source, 'public function uninstall'),
+            strpos($source, 'public function delete') - strpos($source, 'public function uninstall')
+        );
+
+        $this->assertStringNotContainsString('->delete()', $loadPlugin);
+        $this->assertStringNotContainsString('->delete()', $enablePlugin);
+        $this->assertStringContainsString('->delete()', $uninstallPlugin);
+    }
+
     public function test_product_mapping_migration_uses_versioned_unique_keys(): void
     {
         $migration = file_get_contents(dirname(__DIR__, 3)
