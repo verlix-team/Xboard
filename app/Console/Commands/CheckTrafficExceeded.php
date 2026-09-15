@@ -14,7 +14,7 @@ class CheckTrafficExceeded extends Command
 {
     protected $signature = 'check:traffic-exceeded
         {--dry-run : 只读检查 Java traffic Outbox 和交付账本，不抢占、不发布、不弹出 Redis 集合}';
-    protected $description = '检查流量超标用户，并由 Xboard 唯一节点控制面消费 Java traffic Outbox';
+    protected $description = '检查流量超标用户，并由 Xboard 唯一节点控制面消费 Java 用户状态 Outbox';
 
     public function handle(JavaTrafficOutboxService $javaOutbox): int
     {
@@ -32,7 +32,7 @@ class CheckTrafficExceeded extends Command
             } elseif (($result['claimed_deliveries'] ?? 0) > 0
                 || ($result['processed_events'] ?? 0) > 0
                 || ($result['recovered_claims'] ?? 0) > 0) {
-                $this->info('Java traffic Outbox: ' . json_encode($result, JSON_UNESCAPED_UNICODE));
+                $this->info('Java user-state Outbox: ' . json_encode($result, JSON_UNESCAPED_UNICODE));
             }
         }
 

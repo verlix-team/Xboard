@@ -8,18 +8,23 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Consumes Hop Java traffic Outbox events through Xboard's node control plane.
+ * Consumes Hop Java user-membership Outbox events through Xboard's node control plane.
  *
  * The Outbox row remains pending until every online target is accepted by an
- * active Workerman connection, while offline/polling targets are delegated to
- * authoritative full sync. Repeated ADD/REMOVE messages are safe because they
- * describe desired membership instead of a numeric delta.
+ * active Workerman connection, while offline targets are delegated to the
+ * authoritative reconnect full sync. Repeated ADD/REMOVE messages are safe
+ * because they describe desired membership instead of a numeric delta.
  */
 class JavaTrafficOutboxService
 {
     private const OUTBOX_TABLE = 'java_traffic_event_outbox';
     private const DELIVERY_TABLE = 'java_traffic_node_delivery';
-    private const EVENT_TYPES = ['TRAFFIC_EXCEEDED', 'TRAFFIC_RESTORED', 'TRAFFIC_RESET'];
+    private const EVENT_TYPES = [
+        'TRAFFIC_EXCEEDED',
+        'TRAFFIC_RESTORED',
+        'TRAFFIC_RESET',
+        'ENTITLEMENT_CHANGED',
+    ];
 
     /**
      * Process one bounded consumer batch or return a read-only inspection.

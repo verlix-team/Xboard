@@ -61,4 +61,21 @@ class JavaTrafficOutboxServiceTest extends TestCase
             'traffic-exceeded:test-event', 'REMOVE', 42, null
         ));
     }
+
+    public function test_entitlement_event_uses_same_idempotent_delta_contract(): void
+    {
+        $user = (object) [
+            'uuid' => 'test-entitlement-uuid',
+            'speed_limit' => 100,
+            'device_limit' => 5,
+        ];
+
+        $payload = JavaTrafficOutboxService::deltaPayload(
+            'subscription-order:37', 'ADD', 35, $user
+        );
+
+        $this->assertSame('subscription-order:37', $payload['event_id']);
+        $this->assertSame('add', $payload['action']);
+        $this->assertSame(35, $payload['users'][0]['id']);
+    }
 }
