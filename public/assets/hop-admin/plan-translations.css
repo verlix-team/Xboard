@@ -1,0 +1,11 @@
+.hop-plan-translations{border:1px solid hsl(var(--border));border-radius:.75rem;padding:1rem;display:grid;gap:1rem;min-width:0;color:inherit;background:hsl(var(--background))}
+.hop-plan-translations h3{font-size:1.1rem;font-weight:600;margin:0}
+.hop-plan-translations p{font-size:.85rem;line-height:1.6;color:hsl(var(--muted-foreground));margin:0;overflow-wrap:anywhere}
+.hop-plan-translations label{display:grid;gap:.5rem;font-weight:500;font-size:.9rem}
+.hop-plan-translations input,.hop-plan-translations textarea,.hop-plan-translations select{width:100%;min-width:0;box-sizing:border-box;border:1px solid hsl(var(--input));border-radius:.5rem;padding:.65rem;background:hsl(var(--background));color:inherit;font-weight:400}
+.hop-plan-translations textarea{resize:vertical;white-space:pre-wrap}
+.hop-plan-translations button{border:1px solid hsl(var(--border));border-radius:.5rem;padding:.6rem .8rem;font-size:.85rem;background:hsl(var(--background));color:inherit}
+.hop-plan-language-tabs{display:flex;gap:.5rem;flex-wrap:wrap}
+.hop-plan-language-tabs button[aria-pressed=true]{background:hsl(var(--primary));color:hsl(var(--primary-foreground))}
+.hop-plan-translations :is(button,input,textarea,select):focus-visible{outline:2px solid hsl(var(--ring));outline-offset:2px}
+.hop-plan-translations [role=alert]{color:#b91c1c}

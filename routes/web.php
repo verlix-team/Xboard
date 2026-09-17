@@ -2,6 +2,7 @@
 
 use App\Services\ThemeService;
 use App\Services\UpdateService;
+use App\Services\OriginalAdminAssetService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +19,30 @@ use Illuminate\Support\Facades\File;
 |
 */
 
+
+// 原管理静态包公开可读；这里不读取设置、账号、Token或数据库。
+Route::get('/assets/admin/assets/hop-plan-i18n-{revision}.css', function (string $revision) {
+    $file = public_path('assets/hop-admin/plan-translations.css');
+    abort_unless(hash_equals(hash_file('sha256', $file), $revision), 404);
+    return response(file_get_contents($file), 200, [
+        'Content-Type' => 'text/css; charset=UTF-8',
+        'Cache-Control' => 'public, max-age=31536000, immutable',
+        'X-Content-Type-Options' => 'nosniff',
+    ]);
+})->where('revision', '[a-f0-9]{64}');
+
+Route::get('/assets/admin/assets/hop-plan-i18n-{revision}.js', function (string $revision) {
+    $assets = new OriginalAdminAssetService(
+        public_path('assets/admin/' . OriginalAdminAssetService::ENTRY),
+        public_path('assets/hop-admin/plan-translations.js')
+    );
+    abort_unless(hash_equals($assets->revision(), $revision), 404);
+    return response($assets->javascript(), 200, [
+        'Content-Type' => 'application/javascript; charset=UTF-8',
+        'Cache-Control' => 'public, max-age=31536000, immutable',
+        'X-Content-Type-Options' => 'nosniff',
+    ]);
+})->where('revision', '[a-f0-9]{64}');
 
 Route::get('/', function (Request $request) {
     if (admin_setting('app_url') && admin_setting('safe_mode_enable', 0)) {

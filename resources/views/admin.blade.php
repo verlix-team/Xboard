@@ -56,9 +56,17 @@
       $locales[] = 'locales/' . basename($localeFile);
     }
     sort($locales);
+    if ($entry && ($entry['file'] ?? null) !== \App\Services\OriginalAdminAssetService::ENTRY) {
+      abort(503, '原管理前端版本已变化，请先验证套餐国际化扩展');
+    }
+    $planAssets = new \App\Services\OriginalAdminAssetService(
+      public_path('assets/admin/' . \App\Services\OriginalAdminAssetService::ENTRY),
+      public_path('assets/hop-admin/plan-translations.js')
+    );
   @endphp
 
   @if($entry && count($scripts) > 0)
+    <link rel="stylesheet" href="{{ $planAssets->stylesheetUrl() }}" />
     @foreach($styles as $css)
       <link rel="stylesheet" crossorigin href="/assets/admin/{{ $css }}" />
     @endforeach
@@ -66,7 +74,7 @@
       <script src="/assets/admin/{{ $locale }}"></script>
     @endforeach
     @foreach($scripts as $js)
-      <script type="module" crossorigin src="/assets/admin/{{ $js }}"></script>
+      <script type="module" crossorigin src="{{ $js === \App\Services\OriginalAdminAssetService::ENTRY ? $planAssets->url() : '/assets/admin/' . $js }}"></script>
     @endforeach
   @else
     {{-- Fallback: hardcoded paths for backward compatibility --}}
