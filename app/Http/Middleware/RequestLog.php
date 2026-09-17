@@ -25,6 +25,15 @@ class RequestLog
 
             $action = $this->resolveAction($request->path());
             $data = collect($request->all())->except(self::SENSITIVE_KEYS)->toArray();
+            if ($action === 'plan.save') {
+                // 翻译审计只记录语言、默认项和预期版本，不保存完整描述或富文本请求。
+                $data['translationLocales'] = array_values(array_map(
+                    fn ($row) => is_array($row) ? ($row['locale'] ?? '') : '',
+                    is_array($data['translations'] ?? null) ? $data['translations'] : []
+                ));
+                $data['responseStatus'] = $response->getStatusCode();
+                unset($data['translations'], $data['content']);
+            }
 
             AdminAuditLog::insert([
                 'admin_id' => $admin->id,
@@ -57,4 +66,3 @@ class RequestLog
         return $resource . '.' . $method;
     }
 }
-

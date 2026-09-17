@@ -7,12 +7,15 @@ use App\Http\Requests\Admin\PlanSave;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\PlanTranslationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PlanController extends Controller
 {
+    public function __construct(private PlanTranslationService $translations) {}
+
     public function fetch(Request $request)
     {
         $plans = Plan::orderBy('sort', 'ASC')
@@ -30,22 +33,44 @@ class PlanController extends Controller
             ])
             ->get();
 
+        $available = $this->translations->available();
+        $directory = $available ? $this->translations->directory($plans->modelKeys()) : [];
+        foreach ($plans as $plan) {
+            $rows = $directory[$plan->id] ?? [];
+            $defaults = array_values(array_filter($rows, fn ($row) => $row['isDefault']));
+            $plan->setAttribute('translations', array_map(fn ($row) => array_diff_key($row, ['isDefault' => true]), $rows));
+            $plan->setAttribute('defaultLocale', $defaults[0]['locale'] ?? null);
+            $plan->setAttribute('translationVersion', PlanTranslationService::version($rows));
+            $plan->setAttribute('translationsAvailable', $available);
+        }
         return $this->success($plans);
     }
 
     public function save(PlanSave $request)
     {
         $params = $request->validated();
-        
-        if ($request->input('id')) {
-            $plan = Plan::find($request->input('id'));
-            if (!$plan) {
-                return $this->fail([400202, '该订阅不存在']);
-            }
-            
-            DB::beginTransaction();
-            try {
-                if ($request->input('force_update')) {
+        if (!$this->translations->available()) {
+            return response()->json(['data' => false, 'message' => '套餐国际化结构尚未迁移，请先执行Java V026'], 503);
+        }
+        $rows = PlanTranslationService::normalize($params['translations'], $params['defaultLocale']);
+        $expectedVersion = $params['translationVersion'] ?? null;
+        unset($params['translations'], $params['defaultLocale'], $params['translationVersion']);
+        DB::beginTransaction();
+        try {
+            if ($request->input('id')) {
+                $plan = Plan::where('id', $request->input('id'))->lockForUpdate()->first();
+                if (!$plan) {
+                    DB::rollBack();
+                    return $this->fail([400202, '该订阅不存在']);
+                }
+                $currentRows = $this->translations->directory([$plan->id])[$plan->id] ?? [];
+                if (!is_string($expectedVersion) || !hash_equals(PlanTranslationService::version($currentRows), $expectedVersion)) {
+                    DB::rollBack();
+                    return response()->json(['data' => false, 'message' => '套餐翻译已被其他管理员修改，请重新打开后编辑'], 409);
+                }
+                // 纯翻译变更不能因勾选旧表单force_update而重复同步全部用户权益。
+                $plan->fill($params);
+                if ($request->boolean('force_update') && $plan->isDirty(['group_id', 'transfer_enable', 'speed_limit', 'device_limit'])) {
                     User::where('plan_id', $plan->id)->update([
                         'group_id' => $params['group_id'],
                         'transfer_enable' => $params['transfer_enable'] * 1073741824,
@@ -53,19 +78,19 @@ class PlanController extends Controller
                         'device_limit' => $params['device_limit'],
                     ]);
                 }
-                $plan->update($params);
-                DB::commit();
-                return $this->success(true);
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error($e);
-                return $this->fail([500, '保存失败']);
+                if (!$plan->save()) throw new \RuntimeException('套餐保存未成功');
+            } else {
+                $plan = Plan::create($params);
             }
+            $this->translations->save($plan->id, $rows);
+            DB::commit();
+            return $this->success(true);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            // SQL异常可能含描述或名称参数，不记录完整异常和请求体。
+            Log::error('套餐翻译保存失败', ['exception_type' => get_class($e)]);
+            return $this->fail([500, '保存失败']);
         }
-        if (!Plan::create($params)) {
-            return $this->fail([500, '创建失败']);
-        }
-        return $this->success(true);
     }
 
     public function drop(Request $request)
