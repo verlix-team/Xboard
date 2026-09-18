@@ -22,6 +22,10 @@ class OriginalAdminAssetServiceTest extends TestCase
         $this->assertStringContainsString('window.HopPlanTranslations.editor(H),{form:d,plan:n,open:e}', $script);
         $this->assertStringContainsString('window.HopPlanTranslations.payload(e,d,n)', $script);
         $this->assertStringContainsString('OD(v).then', $script);
+        $this->assertStringNotContainsString('name:"name",label:c("plan.form.name.label")', $script);
+        $this->assertStringNotContainsString('c("plan.form.content.label")', $script);
+        $this->assertStringNotContainsString('c("plan.form.content.template.button")', $script);
+        $this->assertStringContainsString('name:cy().min(1).max(255)', $script);
         $this->assertSame(1, substr_count($script, 'window.HopPlanTranslations.payload(e,d,n)'));
         $this->assertMatchesRegularExpression('~^/assets/admin/assets/hop-plan-i18n-[a-f0-9]{64}\.js$~', $service->url());
         $this->assertMatchesRegularExpression('~^/assets/admin/assets/hop-plan-i18n-[a-f0-9]{64}\.css$~', $service->stylesheetUrl());

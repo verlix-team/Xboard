@@ -31,8 +31,17 @@
       translations.push({ locale, name: row.name.trim(), content: row.content });
     }
     // 完整集合与原套餐参数一起走原save事务，服务端校验JSON支持标记及409版本冲突。
-    return { ...params, translations, defaultLocale: draft.defaultLocale,
+    const defaults = draft.rows[draft.defaultLocale];
+    return { ...params, ...(!draft.id ? { name: defaults.name.trim(), content: defaults.content } : {}),
+      translations, defaultLocale: draft.defaultLocale,
       ...(draft.id ? { translationVersion: draft.version } : {}) };
+  }
+  // 仅新建时填充原表单必填内部字段；已有套餐不因改翻译而覆盖内部业务名称/说明。
+  function syncCreateFields(form, draft) {
+    if (draft.id !== null) return;
+    const row = draft.rows[draft.defaultLocale];
+    form.setValue('name', row.name.trim(), { shouldDirty: true });
+    form.setValue('content', row.content, { shouldDirty: true });
   }
   function editor(React) {
     if (components.has(React)) return components.get(React);
@@ -45,13 +54,13 @@
         else drafts.delete(form);
         return () => drafts.delete(form);
       }, [form, plan, open]);
-      function update(next) { drafts.set(form, next); setDraft(next); }
+      function update(next) { drafts.set(form, next); syncCreateFields(form, next); setDraft(next); }
       function field(key, value) {
         update({ ...draft, rows: { ...draft.rows, [locale]: { ...draft.rows[locale], [key]: value } } });
       }
       return h('section', { className: 'hop-plan-translations', 'aria-label': '套餐内容国际化' },
         h('h3', null, '套餐内容国际化'),
-        h('p', null, '用户Web和客户端展示以下翻译。原套餐名称和说明仅作内部业务用途；未填写的语言回退到默认语言。'),
+        h('p', null, '套餐名称和说明统一在这里编辑，用户Web和客户端按语言展示；未填写的语言回退到默认语言。'),
         !draft.available && h('p', { role: 'alert' }, '国际化结构尚未迁移，不能保存套餐。请先执行Java V026。'),
         h('div', { className: 'hop-plan-language-tabs', role: 'group', 'aria-label': '内容语言' },
           ...locales.map(value => h('button', { key: value, type: 'button', 'aria-pressed': locale === value,
@@ -64,7 +73,7 @@
         h('label', null, labels[locale] + '套餐说明', h('textarea', { key: locale + '-content', rows: 6,
           value: draft.rows[locale].content, onChange: event => field('content', event.target.value) })),
         h('p', null, '说明支持Markdown、HTML和feature/support JSON原文；各语言特性数量、顺序和支持标记须一致。切换语言保留未提交内容。'),
-        h('button', { type: 'button', onClick: () => {
+        plan?.id && h('button', { type: 'button', onClick: () => {
           if (!window.confirm(`确认原内容确实属于${labels[locale]}，并覆盖此语言草稿？`)) return;
           const original = form.getValues();
           update({ ...draft, rows: { ...draft.rows, [locale]: { locale, name: original.name || '', content: original.content || '' } } });

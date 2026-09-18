@@ -43,3 +43,12 @@ test('default name and UTF8 description limits are enforced before native reques
   plan.translations[0].name = '中文'; plan.translations[0].content = '俄'.repeat(21846);
   assert.throws(() => api.payload({ id: 9 }, prepare(plan), plan), /超过/);
 });
+test('new canonical fields come only from chosen default translation, not a second editor', () => {
+  const plan = { id: null, translationsAvailable: true, defaultLocale: 'ru-RU', translations: [
+    { locale: 'zh-CN', name: '中文套餐', content: '中文说明' },
+    { locale: 'ru-RU', name: 'Тариф', content: 'Описание' }] };
+  const saved = api.payload({ id: null, name: 'stale original', content: 'stale original', prices: { monthly: 10 } }, prepare(plan), plan);
+  assert.equal(saved.name, 'Тариф'); assert.equal(saved.content, 'Описание');
+  assert.equal(saved.defaultLocale, 'ru-RU'); assert.equal(saved.prices.monthly, 10);
+  assert.equal('translationVersion' in saved, false);
+});
