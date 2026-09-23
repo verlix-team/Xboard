@@ -9,10 +9,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Support\ChecksProcessingAuthority;
 
 class OrderHandleJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, ChecksProcessingAuthority;
     protected $order;
     protected $tradeNo;
 
@@ -23,7 +24,7 @@ class OrderHandleJob implements ShouldQueue
      *
      * @return void
      */
-    public function __construct($tradeNo)
+    public function __construct($tradeNo, protected ?array $processingPermit = null)
     {
         $this->onQueue('order_handle');
         $this->tradeNo = $tradeNo;
@@ -40,6 +41,9 @@ class OrderHandleJob implements ShouldQueue
         if (!$order) return;
         // 即使旧队列中残留任务，也不得处理 Java 用户订单。
         if ($order->processor === 'JAVA_USER') return;
+        $expectedTask = $order->status === Order::STATUS_PENDING ? 'expiredOrder' : 'orderFulfillment';
+        if (($this->processingPermit['task_code'] ?? null) !== $expectedTask
+            || !$this->executionAllowed($this->processingPermit)) return;
         $orderService = new OrderService($order);
         switch ($order->status) {
             // cancel

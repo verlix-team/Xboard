@@ -9,10 +9,13 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Support\ChecksProcessingAuthority;
 
 class NodeUserSyncJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, ChecksProcessingAuthority;
+
+    protected ?array $processingPermit;
 
     public $tries = 2;
     public $timeout = 10;
@@ -20,13 +23,16 @@ class NodeUserSyncJob implements ShouldQueue
     public function __construct(
         private readonly int $userId,
         private readonly string $action,
-        private readonly ?int $oldGroupId = null
+        private readonly ?int $oldGroupId = null,
+        ?array $processingPermit = null
     ) {
         $this->onQueue('node_sync');
+        $this->processingPermit = $processingPermit ?? $this->scanPermit('entitlementSync');
     }
 
     public function handle(): void
     {
+        if (!$this->executionAllowed($this->processingPermit)) return;
         $user = User::find($this->userId);
 
         if ($this->action === 'updated' || $this->action === 'created') {

@@ -11,15 +11,17 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Support\ChecksProcessingAuthority;
 
 class StatUserJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, ChecksProcessingAuthority;
 
     protected array $data;
     protected array $server;
     protected string $protocol;
     protected string $recordType;
+    protected ?array $processingPermit;
 
     public $tries = 3;
     public $timeout = 60;
@@ -36,22 +38,25 @@ class StatUserJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(array $server, array $data, string $protocol, string $recordType = 'd')
+    public function __construct(array $server, array $data, string $protocol, string $recordType = 'd', ?array $processingPermit = null)
     {
         $this->onQueue('stat');
         $this->data = $data;
         $this->server = $server;
         $this->protocol = $protocol;
         $this->recordType = $recordType;
+        $this->processingPermit = $processingPermit ?? $this->scanPermit('nodeStatisticsIngest');
     }
 
     public function handle(): void
     {
+        if (!$this->executionAllowed($this->processingPermit)) return;
         $recordAt = $this->recordType === 'm'
             ? strtotime(date('Y-m-01'))
             : strtotime(date('Y-m-d'));
 
         foreach ($this->data as $uid => $v) {
+            if (!$this->executionAllowed($this->processingPermit)) return;
             try {
                 $this->processUserStat($uid, $v, $recordAt);
             } catch (\Exception $e) {

@@ -9,9 +9,11 @@ use App\Models\Order;
 use App\Models\User;
 use App\Models\Plan;
 use Illuminate\Support\Facades\DB;
+use App\Support\ChecksProcessingAuthority;
 
 class CheckOrder extends Command
 {
+    use ChecksProcessingAuthority;
     /**
      * The name and signature of the console command.
      *
@@ -43,13 +45,22 @@ class CheckOrder extends Command
      */
     public function handle()
     {
-        Order::whereIn('status', [Order::STATUS_PENDING, Order::STATUS_PROCESSING])
+        $permits = [
+            Order::STATUS_PENDING => $this->scanPermit('expiredOrder'),
+            Order::STATUS_PROCESSING => $this->scanPermit('orderFulfillment'),
+        ];
+        $enabledStatuses = array_keys(array_filter($permits));
+        if ($enabledStatuses === []) return self::SUCCESS;
+
+        Order::whereIn('status', $enabledStatuses)
             // Java 用户订单由 Java 支付/订阅链路处理，避免两套扫描器重复履约。
             ->where('processor', '!=', 'JAVA_USER')
             ->orderBy('created_at', 'ASC')
             ->lazyById(200)
-            ->each(function ($order) {
-                OrderHandleJob::dispatch($order->trade_no);
+            ->each(function ($order) use ($permits) {
+                $permit = $permits[$order->status] ?? null;
+                if ($permit) OrderHandleJob::dispatch($order->trade_no, $permit);
             });
+        return self::SUCCESS;
     }
 }

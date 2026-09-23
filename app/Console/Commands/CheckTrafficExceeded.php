@@ -9,9 +9,11 @@ use App\Services\NodeSyncService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use App\Support\ChecksProcessingAuthority;
 
 class CheckTrafficExceeded extends Command
 {
+    use ChecksProcessingAuthority;
     protected $signature = 'check:traffic-exceeded
         {--dry-run : 只读检查 Java traffic Outbox 和交付账本，不抢占、不发布、不弹出 Redis 集合}';
     protected $description = '检查流量超标用户，并由 Xboard 唯一节点控制面消费 Java 用户状态 Outbox';
@@ -22,6 +24,9 @@ class CheckTrafficExceeded extends Command
             $this->line(json_encode($javaOutbox->consume(true), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             return self::SUCCESS;
         }
+
+        $permit = $this->scanPermit('trafficExceeded');
+        if (!$permit || !$this->executionAllowed($permit)) return self::SUCCESS;
 
         if ((bool) config('java_traffic_outbox.enabled', false)) {
             $result = $javaOutbox->consume(false);
@@ -59,6 +64,7 @@ class CheckTrafficExceeded extends Command
         $notifiedCount = 0;
 
         foreach ($groupedUsers as $groupId => $users) {
+            if (!$this->executionAllowed($permit)) return self::SUCCESS;
             if (!$groupId) {
                 continue;
             }

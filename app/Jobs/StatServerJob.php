@@ -13,15 +13,17 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Support\ChecksProcessingAuthority;
 
 class StatServerJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, ChecksProcessingAuthority;
 
     protected array $data;
     protected array $server;
     protected string $protocol;
     protected string $recordType;
+    protected ?array $processingPermit;
 
     public $tries = 3;
     public $timeout = 60;
@@ -38,17 +40,19 @@ class StatServerJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(array $server, array $data, $protocol, string $recordType = 'd')
+    public function __construct(array $server, array $data, $protocol, string $recordType = 'd', ?array $processingPermit = null)
     {
         $this->onQueue('stat');
         $this->data = $data;
         $this->server = $server;
         $this->protocol = $protocol;
         $this->recordType = $recordType;
+        $this->processingPermit = $processingPermit ?? $this->scanPermit('nodeStatisticsIngest');
     }
 
     public function handle(): void
     {
+        if (!$this->executionAllowed($this->processingPermit)) return;
         $recordAt = $this->recordType === 'm'
             ? strtotime(date('Y-m-01'))
             : strtotime(date('Y-m-d'));

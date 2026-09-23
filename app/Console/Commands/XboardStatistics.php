@@ -6,9 +6,11 @@ use App\Services\StatisticalService;
 use Illuminate\Console\Command;
 use App\Models\Stat;
 use Illuminate\Support\Facades\Log;
+use App\Support\ChecksProcessingAuthority;
 
 class XboardStatistics extends Command
 {
+    use ChecksProcessingAuthority;
     /**
      * The name and signature of the console command.
      *
@@ -40,12 +42,15 @@ class XboardStatistics extends Command
      */
     public function handle()
     {
+        $permit = $this->scanPermit('dailyStatistics');
+        if (!$permit || !$this->executionAllowed($permit)) return self::SUCCESS;
         $startAt = microtime(true);
         ini_set('memory_limit', -1);
         // $this->statUser();
         // $this->statServer();
         $this->stat();
         info('统计任务执行完毕。耗时:' . (microtime(true) - $startAt) / 1000);
+        return self::SUCCESS;
     }
 
 

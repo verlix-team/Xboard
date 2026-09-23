@@ -5,9 +5,11 @@ namespace App\Console\Commands;
 use App\Services\MailService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use App\Support\ChecksProcessingAuthority;
 
 class SendRemindMail extends Command
 {
+    use ChecksProcessingAuthority;
     /**
      * The name and signature of the console command.
      *
@@ -31,6 +33,8 @@ class SendRemindMail extends Command
      */
     public function handle(): int
     {
+        $permit = $this->scanPermit('reminderMail');
+        if (!$permit || !$this->executionAllowed($permit)) return self::SUCCESS;
         if (!admin_setting('remind_mail_enable', false)) {
             $this->warn('邮件提醒功能未启用');
             return 0;

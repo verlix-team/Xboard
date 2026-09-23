@@ -7,9 +7,11 @@ use App\Models\TrafficResetLog;
 use App\Services\TrafficResetService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use App\Support\ChecksProcessingAuthority;
 
 class ResetTraffic extends Command
 {
+  use ChecksProcessingAuthority;
   protected $signature = 'reset:traffic {--fix-null : 修正模式，重新计算next_reset_at为null的用户} {--force : 强制模式，重新计算所有用户的重置时间}';
 
   protected $description = '流量重置 - 处理所有需要重置的用户';
@@ -22,6 +24,8 @@ class ResetTraffic extends Command
 
   public function handle(): int
   {
+    $permit = $this->scanPermit('trafficReset');
+    if (!$permit || !$this->executionAllowed($permit)) return self::SUCCESS;
     $fixNull = $this->option('fix-null');
     $force = $this->option('force');
 

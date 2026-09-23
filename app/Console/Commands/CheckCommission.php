@@ -7,9 +7,11 @@ use Illuminate\Console\Command;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use App\Support\ChecksProcessingAuthority;
 
 class CheckCommission extends Command
 {
+    use ChecksProcessingAuthority;
     /**
      * The name and signature of the console command.
      *
@@ -41,13 +43,16 @@ class CheckCommission extends Command
      */
     public function handle()
     {
-        $this->autoCheck();
-        $this->autoPayCommission();
+        $permit = $this->scanPermit('commissionConfirmation');
+        if (!$permit || !$this->executionAllowed($permit)) return self::SUCCESS;
+        $this->autoCheck($permit);
+        $this->autoPayCommission($permit);
+        return self::SUCCESS;
     }
 
-    public function autoCheck()
+    public function autoCheck(array $permit)
     {
-        if ((int)admin_setting('commission_auto_check_enable', 1)) {
+        if ((int)admin_setting('commission_auto_check_enable', 1) && $this->executionAllowed($permit)) {
             Order::where('commission_status', 0)
                 ->where('invite_user_id', '!=', NULL)
                 ->where('status', 3)
@@ -58,12 +63,13 @@ class CheckCommission extends Command
         }
     }
 
-    public function autoPayCommission()
+    public function autoPayCommission(array $permit)
     {
         $orders = Order::where('commission_status', 1)
             ->where('invite_user_id', '!=', NULL)
             ->get();
         foreach ($orders as $order) {
+            if (!$this->executionAllowed($permit)) return;
             try{
                 DB::beginTransaction();
                 if (!$this->payHandle($order->invite_user_id, $order)) {
