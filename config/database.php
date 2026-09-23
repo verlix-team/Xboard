@@ -63,8 +63,9 @@ return [
             'engine' => null,
             'options' => (extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => env('MYSQL_ATTR_SSL_VERIFY_SERVER_CERT'),
                 PDO::ATTR_PERSISTENT => false,
-            ]) : []),
+            ], static fn ($value) => $value !== null && $value !== '') : []),
             'pool' => [
                 'min_connections' => 1,
                 'max_connections' => 10,
