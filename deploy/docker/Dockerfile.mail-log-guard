@@ -1,0 +1,10 @@
+# Minimal follow-up overlay: preserve the complete current runtime and all mail settings.
+ARG LEGACY_BASE_IMAGE
+FROM ${LEGACY_BASE_IMAGE}
+ARG MAIL_LOG_SOURCE_REVISION
+ARG LEGACY_BASE_IMAGE
+LABEL io.hop.mail-log.source-revision="${MAIL_LOG_SOURCE_REVISION}" \
+      io.hop.mail-log.base-image="${LEGACY_BASE_IMAGE}" \
+      io.hop.mail-log.release-kind="smtp-result-log-guard"
+COPY app/Services/MailService.php /www/app/Services/MailService.php
+RUN php -l /www/app/Services/MailService.php

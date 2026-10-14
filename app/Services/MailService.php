@@ -320,7 +320,17 @@ class MailService
             // Never persist SMTP credentials or full transport configuration in delivery logs.
             'config' => json_encode(['transport' => 'smtp'])
         ];
-        MailLog::create($log);
+        // Delivery status must not depend on audit storage:
+        // throwing after successful SMTP would make SendEmailJob retry an already-sent message.
+        try {
+            MailLog::create($log);
+        } catch (\Throwable $logFailure) {
+            try {
+                Log::warning('Mail delivery log failed', ['type' => get_class($logFailure)]);
+            } catch (\Throwable $diagnosticFailure) {
+                // Both log channels may be unavailable; preserve the original SMTP result anyway.
+            }
+        }
         return $log;
     }
 

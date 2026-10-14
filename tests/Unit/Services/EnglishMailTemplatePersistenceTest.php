@@ -7,6 +7,7 @@ use App\Models\MailTemplate;
 use App\Models\MailLog;
 use App\Support\Setting;
 use App\Services\MailService;
+use App\Jobs\SendEmailJob;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Database\Capsule\Manager;
 use Illuminate\Database\Schema\Blueprint;
@@ -15,6 +16,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Database\QueryException;
 use Illuminate\Translation\ArrayLoader;
 use Illuminate\Translation\Translator;
 use Illuminate\Validation\Factory;
@@ -53,7 +56,9 @@ final class EnglishMailTemplatePersistenceTest extends TestCase
             $table->increments('id'); $table->string('name')->unique(); $table->string('subject'); $table->text('content'); $table->timestamps();
         });
         $database->schema()->create('v2_mail_log', function (Blueprint $table) {
-            $table->increments('id'); $table->string('email'); $table->string('subject'); $table->string('template_name'); $table->text('error')->nullable(); $table->text('config')->nullable(); $table->timestamps();
+            // Match the original Laravel migration, not the fields the sender wishes existed.
+            $table->integer('id', true); $table->string('email', 64); $table->string('subject'); $table->string('template_name');
+            $table->text('error')->nullable(); $table->integer('created_at'); $table->integer('updated_at');
         });
         $this->controller = new MailTemplateController();
     }
@@ -117,10 +122,11 @@ final class EnglishMailTemplatePersistenceTest extends TestCase
             $sent = [$message->getSubject(), $html];
         });
         Mail::swap($transport);
-        MailService::sendEmail(['email' => 'test_mail@example.invalid', 'subject' => 'Maintenance & updates', 'template_name' => 'notify',
+        $result = MailService::sendEmail(['email' => 'test_mail@example.invalid', 'subject' => 'Maintenance & updates', 'template_name' => 'notify',
             'template_value' => ['name' => 'Hop', 'content' => 'Safe <script>', 'content_mode' => 'text']]);
         $this->assertSame(['Maintenance & updates', '<p>Safe &lt;script&gt;</p>'], $sent);
-        $this->assertSame(['transport' => 'smtp'], json_decode(MailLog::first()->config, true));
+        $this->assertSame(['transport' => 'smtp'], json_decode($result['config'], true));
+        $this->assertArrayNotHasKey('config', MailLog::first()->getAttributes());
         $this->assertSame('Maintenance & updates', MailLog::first()->subject);
     }
 
@@ -137,5 +143,87 @@ final class EnglishMailTemplatePersistenceTest extends TestCase
         Mail::swap($transport);
         MailService::sendEmail(['email' => 'test_mail@example.invalid', 'subject' => 'Hop test email', 'template_name' => 'smtpTest', 'template_value' => ['name' => 'Hop', 'url' => 'https://example.invalid']]);
         $this->assertSame('mail.default.smtpTest', MailLog::first()->template_name);
+    }
+
+    public function test_mail_log_fixture_has_the_exact_legacy_columns(): void
+    {
+        $this->assertSame(['id', 'email', 'subject', 'template_name', 'error', 'created_at', 'updated_at'],
+            Manager::schema()->getColumnListing('v2_mail_log'));
+    }
+
+    public function test_successful_smtp_is_not_released_when_log_storage_fails(): void
+    {
+        // This table belongs only to the per-test in-memory SQLite connection.
+        Manager::schema()->drop('v2_mail_log');
+        $transport = Mockery::mock();
+        $transport->shouldReceive('send')->once()->andReturnNull();
+        Mail::swap($transport);
+        $logger = Mockery::mock();
+        $logger->shouldReceive('warning')->once()->with('Mail delivery log failed', ['type' => QueryException::class]);
+        Log::swap($logger);
+
+        $job = $this->mailJob();
+        $job->handle();
+        $this->assertSame(0, $job->releaseCount);
+    }
+
+    public function test_real_smtp_failure_keeps_retry_signal_and_safe_error_log(): void
+    {
+        $transport = Mockery::mock();
+        $transport->shouldReceive('send')->once()->andThrow(new \RuntimeException('test_sensitive_transport_detail'));
+        Mail::swap($transport);
+        $logger = Mockery::mock();
+        $logger->shouldReceive('warning')->once()->with('Mail delivery failed', ['type' => \RuntimeException::class]);
+        Log::swap($logger);
+
+        $job = $this->mailJob();
+        $job->handle();
+        $this->assertSame(1, $job->releaseCount);
+        $this->assertSame(\RuntimeException::class, MailLog::first()->error);
+        $this->assertStringNotContainsString('test_sensitive_transport_detail', json_encode(MailLog::first()->getAttributes()));
+    }
+
+    public function test_successful_smtp_is_not_released_when_both_log_channels_fail(): void
+    {
+        Manager::schema()->drop('v2_mail_log');
+        $transport = Mockery::mock();
+        $transport->shouldReceive('send')->once()->andReturnNull();
+        Mail::swap($transport);
+        $logger = Mockery::mock();
+        $logger->shouldReceive('warning')->once()->with('Mail delivery log failed', ['type' => QueryException::class])
+            ->andThrow(new \RuntimeException('test_sensitive_diagnostic_detail'));
+        Log::swap($logger);
+
+        $job = $this->mailJob();
+        $job->handle();
+        $this->assertSame(0, $job->releaseCount);
+    }
+
+    public function test_smtp_and_log_failures_keep_only_the_smtp_retry_signal(): void
+    {
+        Manager::schema()->drop('v2_mail_log');
+        $transport = Mockery::mock();
+        $transport->shouldReceive('send')->once()->andThrow(new \RuntimeException('test_sensitive_transport_detail'));
+        Mail::swap($transport);
+        $logger = Mockery::mock();
+        $logger->shouldReceive('warning')->once()->with('Mail delivery failed', ['type' => \RuntimeException::class])->ordered();
+        $logger->shouldReceive('warning')->once()->with('Mail delivery log failed', ['type' => QueryException::class])->ordered();
+        Log::swap($logger);
+
+        $job = $this->mailJob();
+        $job->handle();
+        $this->assertSame(1, $job->releaseCount);
+    }
+
+    /** Isolate retry handling from authority storage; no real queue, permits or SMTP are used. */
+    private function mailJob(): SendEmailJob
+    {
+        return new class(['email' => 'test_mail@example.invalid', 'subject' => 'Hop test email', 'template_name' => 'smtpTest',
+            'template_value' => ['name' => 'Hop', 'url' => 'https://example.invalid']]) extends SendEmailJob {
+            public int $releaseCount = 0;
+            protected function scanPermit(string $taskCode): ?array { return null; }
+            protected function executionAllowed(?array $permit): bool { return true; }
+            public function release($delay = 0) { $this->releaseCount++; }
+        };
     }
 }
