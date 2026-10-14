@@ -5,9 +5,11 @@ namespace App\Http\Controllers\V2\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\MailTemplate;
 use App\Services\MailService;
+use App\Services\EnglishMailDefaults;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class MailTemplateController extends Controller
 {
@@ -48,6 +50,7 @@ class MailTemplateController extends Controller
             'customized' => $db !== null,
             'subject' => $db?->subject ?? $this->getDefaultSubject($name),
             'content' => $db?->content ?? $this->getDefaultContent($name),
+            'version' => self::version($db),
         ]);
     }
 
@@ -56,7 +59,8 @@ class MailTemplateController extends Controller
         $params = $request->validate([
             'name' => 'required|string',
             'subject' => 'required|string|max:255',
-            'content' => 'required|string',
+            'content' => 'required|string|max:100000',
+            'expected_version' => 'nullable|string|max:64',
         ]);
 
         $meta = MailTemplate::getMeta($params['name']);
@@ -64,15 +68,20 @@ class MailTemplateController extends Controller
             return $this->fail([404, '模板不存在']);
         }
 
-        $errors = MailTemplate::validateContent($params['name'], $params['content']);
+        $errors = array_merge(MailTemplate::validateContent($params['name'], $params['content']),
+            MailTemplate::validateSubject($params['name'], $params['subject']));
         if (!empty($errors)) {
             return $this->fail([422, implode('; ', $errors)]);
         }
 
-        MailTemplate::updateOrCreate(
-            ['name' => $params['name']],
-            ['subject' => $params['subject'], 'content' => $params['content']]
-        );
+        $saved = DB::transaction(function () use ($params, $request) {
+            $current = MailTemplate::where('name', $params['name'])->lockForUpdate()->first();
+            if ($request->has('expected_version') && $request->input('expected_version') !== self::version($current)) return false;
+            MailTemplate::updateOrCreate(['name' => $params['name']],
+                ['subject' => $params['subject'], 'content' => $params['content']]);
+            return true;
+        });
+        if (!$saved) return $this->fail([409, '模板已被修改，请重新加载；未覆盖您的草稿']);
         Cache::forget("mail_template:{$params['name']}");
 
         return $this->success(true);
@@ -86,7 +95,13 @@ class MailTemplateController extends Controller
             return $this->fail([404, '模板不存在']);
         }
 
-        MailTemplate::where('name', $name)->delete();
+        $reset = DB::transaction(function () use ($name, $request) {
+            $current = MailTemplate::where('name', $name)->lockForUpdate()->first();
+            if ($request->has('expected_version') && $request->input('expected_version') !== self::version($current)) return false;
+            if ($current) $current->delete();
+            return true;
+        });
+        if (!$reset) return $this->fail([409, '模板已被修改，请重新加载；未恢复默认值']);
         Cache::forget("mail_template:{$name}");
         return $this->success(true);
     }
@@ -111,12 +126,12 @@ class MailTemplateController extends Controller
             ]);
 
             if ($log['error']) {
-                return $this->fail([500, '发送失败: ' . $log['error']]);
+                return $this->fail([500, '测试邮件发送失败，请检查SMTP配置和投递记录']);
             }
             return $this->success(true);
         } catch (\Exception $e) {
-            Log::error($e);
-            return $this->fail([500, '发送失败: ' . $e->getMessage()]);
+            Log::warning('Mail template test failed', ['type' => get_class($e)]);
+            return $this->fail([500, '未确认测试邮件发送成功，请检查投递记录后再操作']);
         }
     }
 
@@ -124,12 +139,14 @@ class MailTemplateController extends Controller
     {
         $appName = admin_setting('app_name', 'XBoard');
         return match ($name) {
-            'verify' => "{$appName} - 验证码测试",
-            'notify' => "{$appName} - 通知测试",
-            'remindExpire' => "{$appName} - 到期提醒测试",
-            'remindTraffic' => "{$appName} - 流量提醒测试",
-            'mailLogin' => "{$appName} - 登录链接测试",
-            default => "{$appName} - 邮件测试",
+            'verify' => "{$appName} - verification code test",
+            'notify' => "{$appName} - notification test",
+            'remindExpire' => "{$appName} - subscription expiry test",
+            'remindTraffic' => "{$appName} - data usage test",
+            'mailLogin' => "{$appName} - login link test",
+            'ticketReply' => "{$appName} - support ticket reply test",
+            'smtpTest' => "{$appName} - SMTP test email",
+            default => "{$appName} - test email",
         };
     }
 
@@ -146,7 +163,8 @@ class MailTemplateController extends Controller
             ],
             'notify' => [
                 'name' => $appName,
-                'content' => '这是一封测试通知邮件。',
+                'content' => 'This is a test notification email.',
+                'subject' => "{$appName} notification test",
                 'url' => $appUrl,
             ],
             'remindExpire' => [
@@ -162,105 +180,29 @@ class MailTemplateController extends Controller
                 'link' => $appUrl . '/login?token=test-token',
                 'url' => $appUrl,
             ],
+            'ticketReply' => [
+                'name' => $appName,
+                'ticketSubject' => 'Connection assistance',
+                'replyMessage' => 'We have reviewed your request. Please try again.',
+                'url' => $appUrl,
+            ],
             default => ['name' => $appName, 'url' => $appUrl],
         };
     }
 
     private function getDefaultSubject(string $name): string
     {
-        $appName = admin_setting('app_name', 'XBoard');
-        return match ($name) {
-            'verify' => "{$appName} - 邮箱验证码",
-            'notify' => "{$appName} - 站点通知",
-            'remindExpire' => "{$appName} - 服务即将到期",
-            'remindTraffic' => "{$appName} - 流量使用提醒",
-            'mailLogin' => "{$appName} - 邮件登录",
-            default => "{$appName}",
-        };
+        return EnglishMailDefaults::subject($name);
     }
 
     private function getDefaultContent(string $name): string
     {
-        $theme = 'default';
-        $viewName = "mail.{$theme}.{$name}";
-
-        try {
-            $viewPath = resource_path("views/mail/{$theme}/{$name}.blade.php");
-            if (file_exists($viewPath)) {
-                $blade = file_get_contents($viewPath);
-                return self::bladeToPlaceholder($blade);
-            }
-        } catch (\Throwable $e) {
-            // ignore
-        }
-
-        return self::hardcodedDefault($name);
+        return EnglishMailDefaults::content($name);
     }
 
-    /**
-     * Convert Blade syntax to {{placeholder}} syntax for editing.
-     */
-    private static function bladeToPlaceholder(string $blade): string
+    /** Content fingerprints avoid second-resolution timestamp conflicts without schema changes. */
+    private static function version(?MailTemplate $template): string
     {
-        // {{$var}} → {{var}}
-        $result = preg_replace('/\{\{\s*\$([a-zA-Z_]+)\s*\}\}/', '{{$1}}', $blade);
-        // {!! nl2br($var) !!} → {{var}}
-        $result = preg_replace('/\{!!\s*nl2br\(\$([a-zA-Z_]+)\)\s*!!\}/', '{{$1}}', $result);
-        // {!! $var !!} → {{var}}
-        $result = preg_replace('/\{!!\s*\$([a-zA-Z_]+)\s*!!\}/', '{{$1}}', $result);
-        return $result;
-    }
-
-    private static function hardcodedDefault(string $name): string
-    {
-        $layout = fn($title, $body) => <<<HTML
-<div style="background: #eee">
-    <table width="600" border="0" align="center" cellpadding="0" cellspacing="0">
-        <tbody>
-        <tr>
-            <td>
-                <div style="background:#fff">
-                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                        <thead>
-                        <tr>
-                            <td valign="middle" style="padding-left:30px;background-color:#415A94;color:#fff;padding:20px 40px;font-size: 21px;">{{name}}</td>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr style="padding:40px 40px 0 40px;display:table-cell">
-                            <td style="font-size:24px;line-height:1.5;color:#000;margin-top:40px">{$title}</td>
-                        </tr>
-                        <tr>
-                            <td style="font-size:14px;color:#333;padding:24px 40px 0 40px">
-                                尊敬的用户您好！<br /><br />{$body}
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div>
-                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                        <tbody>
-                        <tr>
-                            <td style="padding:20px 40px;font-size:12px;color:#999;line-height:20px;background:#f7f7f7"><a href="{{url}}" style="font-size:14px;color:#929292">返回{{name}}</a></td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </td>
-        </tr>
-        </tbody>
-    </table>
-</div>
-HTML;
-
-        return match ($name) {
-            'verify' => $layout('邮箱验证码', '您的验证码是：{{code}}，请在 5 分钟内进行验证。如果该验证码不为您本人申请，请无视。'),
-            'notify' => $layout('网站通知', '{{content}}'),
-            'remindExpire' => $layout('服务到期提醒', '您的服务即将在24小时内到期，如需继续使用请及时续费。'),
-            'remindTraffic' => $layout('流量使用提醒', '您的流量使用已达到80%，请注意流量使用情况。'),
-            'mailLogin' => $layout('登入到{{name}}', '您正在登入到{{name}}, 请在 5 分钟内点击下方链接进行登入。如果您未授权该登入请求，请无视。<a href="{{link}}">{{link}}</a>'),
-            default => $layout('通知', '{{content}}'),
-        };
+        return $template === null ? 'default' : hash('sha256', $template->subject . "\0" . $template->content);
     }
 }

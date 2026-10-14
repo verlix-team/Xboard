@@ -177,9 +177,7 @@ class MailService
 
         SendEmailJob::dispatch([
             'email' => $user->email,
-            'subject' => __('The traffic usage in :app_name has reached 80%', [
-                'app_name' => admin_setting('app_name', 'XBoard')
-            ]),
+            'subject' => admin_setting('app_name', 'XBoard') . ' data usage reminder',
             'template_name' => 'remindTraffic',
             'template_value' => [
                 'name' => admin_setting('app_name', 'XBoard'),
@@ -196,9 +194,7 @@ class MailService
 
         SendEmailJob::dispatch([
             'email' => $user->email,
-            'subject' => __('The service in :app_name is about to expire', [
-                'app_name' => admin_setting('app_name', 'XBoard')
-            ]),
+            'subject' => admin_setting('app_name', 'XBoard') . ' subscription expiry reminder',
             'template_name' => 'remindExpire',
             'template_value' => [
                 'name' => admin_setting('app_name', 'XBoard'),
@@ -270,6 +266,10 @@ class MailService
 
         $params['template_value'] = $templateValue;
 
+        // Always expose the resolved caller title: the notify default preserves bulk-mail titles.
+        $templateValue['subject'] = $subject;
+        $params['template_value'] = $templateValue;
+
         // Check for DB template override (cached to avoid per-email queries in bulk sends).
         // Cache 'none' sentinel for templates that don't exist in DB.
         $cacheKey = "mail_template:{$templateName}";
@@ -284,9 +284,14 @@ class MailService
         try {
             if ($dbTemplate) {
                 $renderVars = self::buildSafeVars($templateValue);
-                $renderedSubject = self::renderPlaceholders($dbTemplate->subject, $renderVars);
+                $subjectVars = array_filter($templateValue, 'is_scalar');
+                $renderedSubject = self::renderPlaceholders($dbTemplate->subject, $subjectVars);
                 $renderedContent = self::renderPlaceholders($dbTemplate->content, $renderVars);
                 $subject = $renderedSubject ?: $subject;
+
+                if (mb_strlen($subject) > 255 || strpbrk($subject, "\r\n") !== false) {
+                    throw new \InvalidArgumentException('Invalid mail subject');
+                }
 
                 Mail::html($renderedContent, function ($message) use ($email, $subject) {
                     $message->to($email)->subject($subject);
@@ -304,15 +309,16 @@ class MailService
             }
             $error = null;
         } catch (\Exception $e) {
-            Log::error($e);
-            $error = $e->getMessage();
+            Log::warning('Mail delivery failed', ['type' => get_class($e)]);
+            $error = get_class($e);
         }
         $log = [
             'email' => $params['email'],
-            'subject' => $params['subject'],
+            'subject' => $subject,
             'template_name' => $params['template_name'],
             'error' => $error,
-            'config' => config('mail')
+            // Never persist SMTP credentials or full transport configuration in delivery logs.
+            'config' => json_encode(['transport' => 'smtp'])
         ];
         MailLog::create($log);
         return $log;

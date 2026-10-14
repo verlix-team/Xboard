@@ -1,0 +1,27 @@
+# Preserve the exact legacy runtime, including independently patched queue behavior.
+ARG LEGACY_BASE_IMAGE
+FROM ${LEGACY_BASE_IMAGE}
+ARG MAIL_SOURCE_REVISION
+ARG LEGACY_BASE_IMAGE
+LABEL io.hop.mail.source-revision="${MAIL_SOURCE_REVISION}" \
+      io.hop.mail.base-image="${LEGACY_BASE_IMAGE}" \
+      io.hop.mail.release-kind="english-mail-overlay"
+COPY app/Models/MailTemplate.php /www/app/Models/MailTemplate.php
+COPY app/Services/EnglishMailDefaults.php /www/app/Services/EnglishMailDefaults.php
+COPY app/Services/MailService.php /www/app/Services/MailService.php
+COPY app/Services/TicketService.php /www/app/Services/TicketService.php
+COPY app/Services/Auth/MailLinkService.php /www/app/Services/Auth/MailLinkService.php
+COPY app/Http/Controllers/V1/Passport/CommController.php /www/app/Http/Controllers/V1/Passport/CommController.php
+COPY app/Http/Controllers/V2/Admin/ConfigController.php /www/app/Http/Controllers/V2/Admin/ConfigController.php
+COPY app/Http/Controllers/V2/Admin/MailTemplateController.php /www/app/Http/Controllers/V2/Admin/MailTemplateController.php
+COPY resources/views/mail/default/ /www/resources/views/mail/default/
+COPY resources/views/mail/classic/ /www/resources/views/mail/classic/
+COPY deploy/mail/initialize-english-mail.php /opt/hop-mail-release/initialize.php
+RUN php -l /www/app/Models/MailTemplate.php \
+ && php -l /www/app/Services/EnglishMailDefaults.php \
+ && php -l /www/app/Services/MailService.php \
+ && php -l /www/app/Services/TicketService.php \
+ && php -l /www/app/Services/Auth/MailLinkService.php \
+ && php -l /www/app/Http/Controllers/V1/Passport/CommController.php \
+ && php -l /www/app/Http/Controllers/V2/Admin/ConfigController.php \
+ && php -l /www/app/Http/Controllers/V2/Admin/MailTemplateController.php

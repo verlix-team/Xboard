@@ -44,7 +44,7 @@ class CommController extends Controller
             return $this->fail([400, __('Email verification code has been sent, please request again later')]);
         }
         $code = rand(100000, 999999);
-        $subject = admin_setting('app_name', 'XBoard') . __('Email verification code');
+        $subject = admin_setting('app_name', 'XBoard') . ' email verification code';
 
         SendEmailJob::dispatch([
             'email' => $email,

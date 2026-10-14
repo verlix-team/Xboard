@@ -37,11 +37,10 @@ class ConfigController extends Controller
     {
         $mailLog = MailService::sendEmail([
             'email' => $request->user()->email,
-            'subject' => 'This is xboard test email',
-            'template_name' => 'notify',
+            'subject' => admin_setting('app_name', 'XBoard') . ' test email',
+            'template_name' => 'smtpTest',
             'template_value' => [
                 'name' => admin_setting('app_name', 'XBoard'),
-                'content' => 'This is xboard test email',
                 'url' => admin_setting('app_url')
             ]
         ]);

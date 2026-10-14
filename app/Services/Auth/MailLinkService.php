@@ -60,9 +60,7 @@ class MailLinkService
     {
         SendEmailJob::dispatch([
             'email' => $user->email,
-            'subject' => __('Login to :name', [
-                'name' => admin_setting('app_name', 'XBoard')
-            ]),
+            'subject' => 'Log in to ' . admin_setting('app_name', 'XBoard'),
             'template_name' => 'mailLogin',
             'template_value' => [
                 'name' => admin_setting('app_name', 'XBoard'),
