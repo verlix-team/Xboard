@@ -1,0 +1,82 @@
+{
+  "utc": "2026-10-15T10:55:09.485634+00:00",
+  "web_id": "540042ce04e9a65c3f70be0264f7ed6b955b8af73b15e41b1ffd11f859b197cc",
+  "image_id": "sha256:d410347eb48991e24c4dfeffa974a2e64d09ec799fedb029735d947ce301a54a",
+  "restart_count": 0,
+  "admin_html_200": true,
+  "home_200": true,
+  "translation_protection_served": true,
+  "template_hash_verified": true,
+  "entrypoint_unchanged": true,
+  "env_unchanged": true,
+  "protected_container_ids_images_unchanged": true,
+  "protected": {
+    "/xboard-legacy-mail-1": {
+      "id": "f6743b7108cb31c443900a3ae0e0aaa77a6e021430bf703104ad05f316932380",
+      "image": "sha256:4dabec44afc4cdb41cb33668be0103406db2cc1615e94d1607b272f8a15018c3",
+      "started_at": "2026-10-15T10:29:54.632585568Z",
+      "restart_count": 21
+    },
+    "/xboard-task512-workers-order-handle-1": {
+      "id": "5de825f39a4a2a556447653d5e0fc562be9690f817cdb1ae618e47868d2a02c5",
+      "image": "sha256:25d10aacc66dc77f1a44916bca8e69783b7bb38d2bad87e6ea870ca534bf0a56",
+      "started_at": "2026-10-15T10:20:15.359886757Z",
+      "restart_count": 80
+    },
+    "/xboard-task512-workers-default-1": {
+      "id": "cf910e8a3d5519598a0b2f8e34d8cdcd8b7881dc9650e22d64ecf82db44e1c42",
+      "image": "sha256:25d10aacc66dc77f1a44916bca8e69783b7bb38d2bad87e6ea870ca534bf0a56",
+      "started_at": "2026-10-15T10:20:36.464396393Z",
+      "restart_count": 80
+    },
+    "/xboard-task512-workers-stat-1": {
+      "id": "0a207d870d10c5b47c39dc7705f28435b6a44a9401e071fd4dab3a6cf3be6129",
+      "image": "sha256:25d10aacc66dc77f1a44916bca8e69783b7bb38d2bad87e6ea870ca534bf0a56",
+      "started_at": "2026-10-15T10:20:23.894398205Z",
+      "restart_count": 80
+    },
+    "/xboard-task512-workers-traffic-fetch-1": {
+      "id": "35abe0b9a62c2ea37cc3c56c7b6505b1c204c4effb00710b5cebe1a31ca60f53",
+      "image": "sha256:25d10aacc66dc77f1a44916bca8e69783b7bb38d2bad87e6ea870ca534bf0a56",
+      "started_at": "2026-10-15T10:20:04.641043062Z",
+      "restart_count": 80
+    },
+    "/xboard-task512-workers-node-sync-1": {
+      "id": "096cac18e053b97c97e8c15f8b0d5368087fd235dbbff4638354999c3d78e552",
+      "image": "sha256:25d10aacc66dc77f1a44916bca8e69783b7bb38d2bad87e6ea870ca534bf0a56",
+      "started_at": "2026-10-15T10:20:24.161644324Z",
+      "restart_count": 80
+    },
+    "/xboard-task512-workers-user-alive-sync-1": {
+      "id": "0626a6201a6d0dff371a878bf7f97fb65bb32087fb6e5a7682afe89cc53d040c",
+      "image": "sha256:25d10aacc66dc77f1a44916bca8e69783b7bb38d2bad87e6ea870ca534bf0a56",
+      "started_at": "2026-10-15T10:20:36.099922293Z",
+      "restart_count": 80
+    },
+    "/hop-quality-integration-api-1": {
+      "id": "19bfb92e6b3249a5b4d2a26718a502bcf007c27b164846b4e6466e652cdb618f",
+      "image": "sha256:771ea0486e3f1371e51cd924b4ce7b0cf4f6d6c90fe7618324cbdd0381151ef6",
+      "started_at": "2026-10-12T02:18:30.257916725Z",
+      "restart_count": 0
+    },
+    "/xboard-api-docs": {
+      "id": "964501fb5e4e01d8efcdf5235ce2b9afd686b345f052f19ea16852edb4dc3964",
+      "image": "sha256:dddfedc44a798da9deb8d6c35d10c53a7a6c2215953385d625b1a6fc70e2400d",
+      "started_at": "2026-10-12T02:18:29.9894068Z",
+      "restart_count": 0
+    },
+    "/xboard-ws-server-ws-server-1": {
+      "id": "04735d066557ad7e00cae2c2ae36b708ade3bb38f26c002700bf8f306981a61b",
+      "image": "sha256:e388d3a07879b93ffb83899696e6285410a48f7479d0c70fd59e4509949aebac",
+      "started_at": "2026-10-12T02:18:30.270515038Z",
+      "restart_count": 0
+    },
+    "/caddy": {
+      "id": "b256d06218f1bca7c503fe61021a8fdece2d098e1aa87e9cd511d25e8917aa5b",
+      "image": "sha256:df7f1c2fb114453b951de51a98efc010db1655a92c2e86be6706714e2417a78d",
+      "started_at": "2026-10-12T02:18:29.86816659Z",
+      "restart_count": 0
+    }
+  },
+  "rollback_compose": "/data/xboard-backups/20261015T102928Z/compose.web.before-deploy.yaml"
+}

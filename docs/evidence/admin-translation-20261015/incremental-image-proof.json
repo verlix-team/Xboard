@@ -1,0 +1,36 @@
+{
+  "utc": "2026-10-15T10:50:41.502769+00:00",
+  "full_bytes": 141655040,
+  "delta_bytes": 51200,
+  "cached_blobs_skipped": 43,
+  "cached_bytes_reused": 141574956,
+  "delta_sha256": "b642ec4f52dbd586682a0819f7a84198f625bb66127460fb92d82470385de79f",
+  "delta_path": "/data/xboard-web-releases/admin-translate-20261015T102928Z/image-delta.tar",
+  "kept": [
+    {
+      "name": "blobs/sha256/be57b9d924de14e529cf6f5d2f4143683d44d8d8038d4d1c83ed66279162a340",
+      "bytes": 1525
+    },
+    {
+      "name": "blobs/sha256/d410347eb48991e24c4dfeffa974a2e64d09ec799fedb029735d947ce301a54a",
+      "bytes": 10115
+    },
+    {
+      "name": "blobs/sha256/ea3d780e9cc86e92b14d337a8e4c563bc6a495c6a58d50c51b1a3773d19c5138",
+      "bytes": 26718
+    },
+    {
+      "name": "index.json",
+      "bytes": 392
+    },
+    {
+      "name": "manifest.json",
+      "bytes": 3754
+    },
+    {
+      "name": "oci-layout",
+      "bytes": 30
+    }
+  ],
+  "target_cached_digests_sha256": "4102f653287d642a2023b3bb0ed11435b01cc7e964c08ab3e8e958fe7331eacd"
+}

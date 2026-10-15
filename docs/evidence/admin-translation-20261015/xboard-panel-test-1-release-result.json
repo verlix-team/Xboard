@@ -1,0 +1,46 @@
+{
+  "utc": "2026-10-15T10:52:54.273492+00:00",
+  "web_id": "c8dcee9e53e0fbf2d0f48079c7f01bfd4ecfee2e338c96e15bd0af2d28bcd120",
+  "image_id": "sha256:d410347eb48991e24c4dfeffa974a2e64d09ec799fedb029735d947ce301a54a",
+  "restart_count": 0,
+  "admin_html_200": true,
+  "home_200": true,
+  "translation_protection_served": true,
+  "template_hash_verified": true,
+  "entrypoint_unchanged": true,
+  "env_unchanged": true,
+  "protected_container_ids_images_unchanged": true,
+  "protected": {
+    "/hop-admin-webui-webui-1": {
+      "id": "38268f33be15f96e36d31f11a1a9111ff330dcc8117b635dcfe18bf86adf1092",
+      "image": "sha256:9c27af73654b10e20476fdd64c6a8224a20948bb5a0677ca952a6a6e53e937f0",
+      "started_at": "2026-10-14T12:47:43.235884444Z",
+      "restart_count": 0
+    },
+    "/hop-doc-upload": {
+      "id": "4f0c43c2f00be2696cf3f7a119a180cc36290885180e4632e4adaf1716f01cc1",
+      "image": "sha256:a93c6569ae7cccc6316df89e2df5f3a0838190485a9bdde78390db367e298a26",
+      "started_at": "2026-10-12T02:18:35.925902442Z",
+      "restart_count": 0
+    },
+    "/hop-official-website": {
+      "id": "81e674feeba4f486b5dbeb299abdea82aac87b02ea88f932104fc10e33b3eb65",
+      "image": "sha256:76d3a0b270cff96acaf0fd482c7c8c810ec79d6fe5bda5571fdc9e85eee84609",
+      "started_at": "2026-10-12T02:18:35.856850612Z",
+      "restart_count": 0
+    },
+    "/xboard-ws-server-ws-server-1": {
+      "id": "4ed56460648f69d574f0e63d56a3b03020a1d7cfa00b57692ff8b86016f6305f",
+      "image": "sha256:e388d3a07879b93ffb83899696e6285410a48f7479d0c70fd59e4509949aebac",
+      "started_at": "2026-10-12T02:18:35.924613802Z",
+      "restart_count": 0
+    },
+    "/caddy": {
+      "id": "1e642ac7f39d1dd95a3ad023e48afb7fc0a6198b945cd4e07cb209ec5a586f45",
+      "image": "sha256:df7f1c2fb114453b951de51a98efc010db1655a92c2e86be6706714e2417a78d",
+      "started_at": "2026-10-12T02:18:35.878213979Z",
+      "restart_count": 0
+    }
+  },
+  "rollback_compose": "/data/xboard-backups/20261015T102928Z/compose.web.before-deploy.yaml"
+}

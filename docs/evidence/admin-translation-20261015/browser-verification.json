@@ -1,0 +1,84 @@
+{
+  "utc": "2026-10-15T11:01:18.167Z",
+  "runtime_template_revision": "7d2056a3030aec1f4aa9d7204558d5091fe84cd3",
+  "template_sha256": "684595bb35e136a0339505a24f4a293a1d33358a56d0348225e9dcbb6733c725",
+  "image_id": "sha256:d410347eb48991e24c4dfeffa974a2e64d09ec799fedb029735d947ce301a54a",
+  "authenticated_user_session": "EXISTING_XBOARD_ADMIN_SESSION",
+  "before_fix_untranslated_control": [
+    {
+      "menu": "套餐管理",
+      "removeChild": false,
+      "rows": 11
+    },
+    {
+      "menu": "用户管理",
+      "removeChild": false,
+      "rows": 11
+    },
+    {
+      "menu": "订单管理",
+      "removeChild": false,
+      "rows": 11
+    }
+  ],
+  "after_reload_guards": {
+    "googleMeta": "notranslate",
+    "htmlTranslate": "no",
+    "rootClass": "notranslate",
+    "rootTranslate": "no",
+    "translatedFontCount": 0
+  },
+  "after_fix_navigation": [
+    {
+      "menu": "用户管理",
+      "error": false,
+      "rows": 11,
+      "heading": "- heading \"用户管理\" [level=2]"
+    },
+    {
+      "menu": "套餐管理",
+      "error": false,
+      "rows": 11,
+      "heading": "- heading \"订阅套餐\" [level=2]"
+    },
+    {
+      "menu": "订单管理",
+      "error": false,
+      "rows": 21,
+      "heading": "- heading \"订单管理\" [level=2]"
+    },
+    {
+      "menu": "仪表盘",
+      "error": false,
+      "rows": 0,
+      "heading": "- heading \"仪表盘\" [level=1]"
+    },
+    {
+      "menu": "节点管理",
+      "error": false,
+      "rows": 11,
+      "heading": "- heading \"节点管理\" [level=2]"
+    },
+    {
+      "menu": "套餐管理",
+      "error": false,
+      "rows": 11,
+      "heading": "- heading \"订阅套餐\" [level=2]"
+    }
+  ],
+  "observed_authenticated_api": [
+    {
+      "path": "/api/v2/3ee4630c/plugin/getPlugins",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/3ee4630c/order/fetch",
+      "status": 200
+    }
+  ],
+  "translation_forced_again_in_browser": false,
+  "raw_credentials_or_business_response_bodies_saved": false,
+  "screenshot": "/Users/lushangyan/ideaProject/hop/运维/记录/xboard-admin-translation-20261015.png",
+  "browser_temporary_network_observation": "DISABLED",
+  "result": "PASS_FOR_OBSERVED_AUTHENTICATED_NAVIGATION_AND_DECLARED_TRANSLATION_PROTECTION"
+}

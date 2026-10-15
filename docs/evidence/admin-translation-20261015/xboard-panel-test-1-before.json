@@ -1,0 +1,50 @@
+{
+  "utc": "2026-10-15T10:33:48.080683+00:00",
+  "hostname": "h-1785198058565412736",
+  "web": {
+    "id": "376a27aad4d0abb97fdb33954d7e32454827ea88dbde6ffd5c29a4c3b569edd9",
+    "image": "sha256:4dabec44afc4cdb41cb33668be0103406db2cc1615e94d1607b272f8a15018c3",
+    "image_name": "xboard-mail-log-guard:014926b6df4e",
+    "status": "running",
+    "restart_count": 0,
+    "template_sha256": "fadf07739e2190e0edd23d63a7e330f23259e0595c6af9c857b79e7fa5bd7e6a",
+    "entrypoint_sha256": "086b63036430731df9316dd7e95b22bf2eee446902b5cbaaf2a406b3522b25b1",
+    "startup_skip": "true",
+    "startup_guard_present": true,
+    "release_policy": "skip-startup-update-v1"
+  },
+  "compose_sha256": "ace3b462161ead0554e169f794329714f9969a306a5cc156c4382a9cb546b7b3",
+  "env_sha256": "40d9b3112e23fc17270537e8b4b8beacb3cdd9f5c9d80a595b337863c615cfd4",
+  "protected": {
+    "/hop-admin-webui-webui-1": {
+      "id": "38268f33be15f96e36d31f11a1a9111ff330dcc8117b635dcfe18bf86adf1092",
+      "image": "sha256:9c27af73654b10e20476fdd64c6a8224a20948bb5a0677ca952a6a6e53e937f0",
+      "started_at": "2026-10-14T12:47:43.235884444Z",
+      "restart_count": 0
+    },
+    "/hop-doc-upload": {
+      "id": "4f0c43c2f00be2696cf3f7a119a180cc36290885180e4632e4adaf1716f01cc1",
+      "image": "sha256:a93c6569ae7cccc6316df89e2df5f3a0838190485a9bdde78390db367e298a26",
+      "started_at": "2026-10-12T02:18:35.925902442Z",
+      "restart_count": 0
+    },
+    "/hop-official-website": {
+      "id": "81e674feeba4f486b5dbeb299abdea82aac87b02ea88f932104fc10e33b3eb65",
+      "image": "sha256:76d3a0b270cff96acaf0fd482c7c8c810ec79d6fe5bda5571fdc9e85eee84609",
+      "started_at": "2026-10-12T02:18:35.856850612Z",
+      "restart_count": 0
+    },
+    "/xboard-ws-server-ws-server-1": {
+      "id": "4ed56460648f69d574f0e63d56a3b03020a1d7cfa00b57692ff8b86016f6305f",
+      "image": "sha256:e388d3a07879b93ffb83899696e6285410a48f7479d0c70fd59e4509949aebac",
+      "started_at": "2026-10-12T02:18:35.924613802Z",
+      "restart_count": 0
+    },
+    "/caddy": {
+      "id": "1e642ac7f39d1dd95a3ad023e48afb7fc0a6198b945cd4e07cb209ec5a586f45",
+      "image": "sha256:df7f1c2fb114453b951de51a98efc010db1655a92c2e86be6706714e2417a78d",
+      "started_at": "2026-10-12T02:18:35.878213979Z",
+      "restart_count": 0
+    }
+  }
+}

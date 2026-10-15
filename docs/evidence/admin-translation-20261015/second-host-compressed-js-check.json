@@ -1,0 +1,17 @@
+{
+  "returncode": 0,
+  "bytes": 6539095,
+  "sha256": "3ebc08f2ba3026f2dca8bc4307b3c5d53fa219ff90e5a46a50e796f27cb72f6e",
+  "expected_sha256": "3ebc08f2ba3026f2dca8bc4307b3c5d53fa219ff90e5a46a50e796f27cb72f6e",
+  "matches": true,
+  "earlier_plain_download_timeouts": [
+    {
+      "seconds": 25,
+      "bytes": 3817472
+    },
+    {
+      "seconds": 90,
+      "bytes": 4096000
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "image_id": "sha256:d410347eb48991e24c4dfeffa974a2e64d09ec799fedb029735d947ce301a54a",
+  "code_files_verified": 339,
+  "changed_files": [
+    "/www/resources/views/admin.blade.php"
+  ],
+  "network": "none",
+  "business_mounts": []
+}
