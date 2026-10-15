@@ -1,8 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no">
 
 <head>
   <meta charset="UTF-8" />
+  {{-- Browser translation rewrites React-owned text nodes and can break route updates.
+       Use the admin application's own language selector instead. --}}
+  <meta name="google" content="notranslate" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{ $title }}</title>
   <script>
@@ -88,7 +91,7 @@
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root" class="notranslate" translate="no"></div>
 </body>
 
 </html>
